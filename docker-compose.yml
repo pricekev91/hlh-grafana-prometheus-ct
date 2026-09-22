@@ -17,12 +17,13 @@ services:
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
+    ports:
+      - "192.168.1.11:9090:9090"
     networks:
       - internal
-    # Prometheus is internal-only; Grafana reaches it at http://prometheus:9090.
-    # To expose Prometheus UI externally on same macvlan IP, add:
-    #   networks: { internal, macvlan: { ipv4_address: 192.168.1.15 } }
-    # or use network_mode: service:grafana (shares 192.168.1.14). Currently internal to avoid IP conflict.
+    # Prometheus is reachable at http://192.168.1.11:9090 (hlh-docker host IP) for external UI,
+    # and at http://prometheus:9090 internally from Grafana via internal bridge.
+    # To use a dedicated macvlan IP instead, add: networks: { internal, macvlan: { ipv4_address: 192.168.1.15 } }
 
   grafana:
     image: grafana/grafana:11.5.2

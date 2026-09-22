@@ -1,0 +1,101 @@
+{
+  "title": "HLH LLM Overview",
+  "uid": "hlh-llm-overview",
+  "description": "Unified Prometheus + Grafana for vLLM (192.168.1.13:8000) and llama.cpp (192.168.1.12:80) on hlh-docker 192.168.1.14 — Stage 2",
+  "tags": ["hlh", "vllm", "llamacpp", "prometheus"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "5s",
+  "time": { "from": "now-1h", "to": "now" },
+  "templating": {
+    "list": [
+      {
+        "name": "engine",
+        "label": "Engine",
+        "type": "custom",
+        "hide": 0,
+        "current": { "text": "All", "value": "$__all" },
+        "options": [
+          { "text": "All", "value": "$__all", "selected": true },
+          { "text": "vllm", "value": "vllm" },
+          { "text": "llamacpp", "value": "llamacpp" },
+          { "text": "prometheus", "value": "prometheus" }
+        ],
+        "includeAll": true,
+        "multi": false
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Prometheus Up",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+      "fieldConfig": { "defaults": { "thresholds": { "steps": [{ "color": "red", "value": 0 }, { "color": "green", "value": 1 }] } }, "overrides": [] },
+      "targets": [{ "expr": "up{job=\"prometheus\"}", "refId": "A" }]
+    },
+    {
+      "id": 2,
+      "title": "Scrape Targets Health (up)",
+      "type": "table",
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "gridPos": { "h": 8, "w": 18, "x": 6, "y": 0 },
+      "fieldConfig": { "defaults": {}, "overrides": [] },
+      "targets": [{ "expr": "up", "format": "table", "refId": "A" }],
+      "transformations": [{ "id": "organize", "options": { "includeByName": { "job": true, "instance": true, "engine": true, "Value": true }, "renameByName": { "Value": "up" } } }]
+    },
+    {
+      "id": 3,
+      "title": "Scrape Duration (s)",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+      "targets": [{ "expr": "scrape_duration_seconds{job=~\"$engine\"}", "refId": "A", "legendFormat": "{{job}}/{{instance}}" }]
+    },
+    {
+      "id": 4,
+      "title": "Engine Info / How to Verify",
+      "type": "text",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "options": {
+        "mode": "markdown",
+        "content": "### How to verify\n- **Grafana:** http://192.168.1.14:3000 (this dashboard)\n- **Prometheus (internal → host):** http://192.168.1.11:9090 or `docker exec prometheus wget -qO- http://localhost:9090/-/healthy`\n- **Prometheus targets:** `docker exec prometheus wget -qO- http://localhost:9090/api/v1/targets` — expect `health: up` for `vllm` and `llamacpp` when LXCs 112/113 are running\n- **Engines:** `curl http://192.168.1.12:80/metrics` (llama.cpp needs `--metrics` flag) and `curl http://192.168.1.13:8000/metrics` (vLLM default)\n- If targets show `no route to host` or `down`, start engines on prox01: `pct status 112; pct status 113; pct start 112; pct start 113`\n- **Scrape labels:** `engine=vllm` (113) and `engine=llamacpp` (112), filter with template variable `engine` above"
+      }
+    },
+    {
+      "id": 5,
+      "title": "Token Throughput (tok/s) — vLLM + llama.cpp",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 12 },
+      "fieldConfig": { "defaults": { "unit": "ops" }, "overrides": [] },
+      "targets": [
+        { "expr": "rate(vllm:request_prompt_tokens_sum[5m]) or rate(llamacpp:prompt_tokens_seconds[5m]) or rate(process_cpu_seconds_total[5m])", "refId": "A", "legendFormat": "{{job}} tok/s (placeholder — exact metric name varies by engine build)" }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Requests — Running / Waiting",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 20 },
+      "targets": [
+        { "expr": "vllm:num_requests_running or llamacpp:requests_processing or up{job=~\"$engine\"}", "refId": "A", "legendFormat": "{{job}} running" }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "KV Cache / Memory (placeholder — engine-specific)",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 20 },
+      "targets": [
+        { "expr": "vllm:kv_cache_usage_perc or llamacpp:kv_cache_usage or 0", "refId": "A", "legendFormat": "{{job}} kv cache" }
+      ]
+    }
+  ]
+}
