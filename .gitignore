@@ -1,0 +1,6 @@
+.env
+grafana_data/
+prometheus_data/
+*.tfstate
+*.tfstate.*
+.terraform/

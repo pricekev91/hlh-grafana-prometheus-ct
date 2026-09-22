@@ -1,0 +1,67 @@
+# Stage 1 — hlh-grafana-prometheus-ct
+# Target: hlh-docker LXC 111 (192.168.1.11) → macvlan dedicated IP 192.168.1.14
+# Grafana  http://192.168.1.14:3000  (macvlan dedicated IP per user request)
+# Prometheus http://prometheus:9090 internal (via internal bridge); external UI optional via Grafana or extra macvlan IP
+# Storage: /srv/data/grafana-prometheus on host ZFS RaidZ1-6TB/hlh-docker-data (mp0) — see hlh-docker/deploy-hlh-docker.sh:281
+services:
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    container_name: prometheus
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=15d
+      - --web.console.libraries=/usr/share/prometheus/console_libraries
+      - --web.console.templates=/usr/share/prometheus/consoles
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    networks:
+      - internal
+    # Prometheus is internal-only; Grafana reaches it at http://prometheus:9090.
+    # To expose Prometheus UI externally on same macvlan IP, add:
+    #   networks: { internal, macvlan: { ipv4_address: 192.168.1.15 } }
+    # or use network_mode: service:grafana (shares 192.168.1.14). Currently internal to avoid IP conflict.
+
+  grafana:
+    image: grafana/grafana:11.5.2
+    container_name: grafana
+    restart: unless-stopped
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GF_SECURITY_ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GF_SECURITY_ADMIN_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SERVER_HTTP_PORT=3000
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      - prometheus
+    networks:
+      internal:
+      macvlan:
+        ipv4_address: 192.168.1.14
+
+volumes:
+  prometheus_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /srv/data/grafana-prometheus/prometheus_data
+  grafana_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /srv/data/grafana-prometheus/grafana_data
+
+networks:
+  internal:
+    driver: bridge
+  macvlan:
+    external: true
+    name: macvlan

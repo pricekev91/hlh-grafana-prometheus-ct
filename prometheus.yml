@@ -1,0 +1,30 @@
+# Stage 0 draft — prometheus.yml for hlh-docker macvlan 192.168.1.14
+# Scrapes: vLLM 192.168.1.13:8000 and llama.cpp 192.168.1.12:80
+# Validate: promtool check config prometheus.yml
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  scrape_timeout: 10s
+  external_labels:
+    monitor: hlh-docker
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets: ['localhost:9090']
+
+  - job_name: vllm
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['192.168.1.13:8000']
+        labels:
+          engine: vllm
+          instance: hlh-ai-engine-vllm
+
+  - job_name: llamacpp
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['192.168.1.12:80']
+        labels:
+          engine: llamacpp
+          instance: hlh-ai-engine
