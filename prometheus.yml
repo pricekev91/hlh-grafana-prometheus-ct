@@ -28,3 +28,9 @@ scrape_configs:
         labels:
           engine: llamacpp
           instance: hlh-ai-engine
+
+  - job_name: node
+    static_configs:
+      - targets: ['node-exporter:9100']
+        labels:
+          instance: hlh-docker
