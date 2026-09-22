@@ -1,0 +1,1255 @@
+{
+  "title": "llama-opencode",
+  "uid": "llama-opencode",
+  "description": "llama-opencode - llama.cpp dashboard (classic panels, Grafana 11.5). Source: official llama.cpp metrics endpoint + Target roadmap metrics. Datasource PBFA97CFB590B2093 for 192.168.1.12:80. Counters: prompt_tokens_total, prompt_tokens_cached_total (Target but present), prompt_seconds_total, tokens_predicted_total, tokens_predicted_seconds_total, n_decode_total, n_tokens_max, spec_decode_*. Gauges: prompt_tokens_seconds, predicted_tokens_seconds, requests_processing/deferred, n_busy_slots_per_decode, kv_cache_usage_ratio/slots_* (Target, fallback 0).",
+  "tags": [
+    "llamacpp",
+    "opencode",
+    "hlh",
+    "prometheus",
+    "dgx-spark"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "5s",
+  "time": {
+    "from": "now-15m",
+    "to": "now"
+  },
+  "timepicker": {},
+  "weekStart": "",
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "editable": true,
+  "preload": false,
+  "links": [],
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "#76B900",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "templating": {
+    "list": []
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "PROMPT TOKENS (TOTAL)",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 0
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#76B900"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#76B900",
+                "value": 0
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value_and_name"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "sum(llamacpp:prompt_tokens_total)",
+          "refId": "A",
+          "editorMode": "code",
+          "range": true,
+          "legendFormat": "prompt"
+        }
+      ],
+      "pluginVersion": "11.5.2",
+      "description": "Prompt tokens processed (excludes pure cache hits)"
+    },
+    {
+      "id": 2,
+      "title": "PROMPT TOKENS CACHED (TOTAL)",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 6,
+        "y": 0
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#76B900"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#76B900",
+                "value": 0
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value_and_name"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "sum(llamacpp:prompt_tokens_cached_total)",
+          "refId": "A",
+          "editorMode": "code",
+          "range": true,
+          "legendFormat": "cached"
+        }
+      ],
+      "pluginVersion": "11.5.2",
+      "description": "Tokens served from KV cache (no decode) - Target metric now available on your server"
+    },
+    {
+      "id": 3,
+      "title": "TOKENS PREDICTED (TOTAL)",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 12,
+        "y": 0
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#76B900"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#76B900",
+                "value": 0
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value_and_name"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "sum(llamacpp:tokens_predicted_total)",
+          "refId": "A",
+          "editorMode": "code",
+          "range": true,
+          "legendFormat": "predicted"
+        }
+      ],
+      "pluginVersion": "11.5.2",
+      "description": "Generation / completion tokens produced"
+    },
+    {
+      "id": 4,
+      "title": "CACHE HIT RATE",
+      "type": "gauge",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 18,
+        "y": 0
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#FF4D4D",
+                "value": 0
+              },
+              {
+                "color": "#E5C100",
+                "value": 50
+              },
+              {
+                "color": "#76B900",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "minVizHeight": 75,
+        "minVizWidth": 75,
+        "orientation": "auto",
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true,
+        "sizing": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "(100 * sum(rate(llamacpp:prompt_tokens_cached_total[5m])) / clamp_min(sum(rate(llamacpp:prompt_tokens_total[5m])) + sum(rate(llamacpp:prompt_tokens_cached_total[5m])), 0.0001))",
+          "refId": "A",
+          "editorMode": "code",
+          "range": true,
+          "legendFormat": "hit %"
+        }
+      ],
+      "pluginVersion": "11.5.2",
+      "description": "rate(cached) / (rate(total)+rate(cached)) - direct visibility, per your note"
+    },
+    {
+      "id": 11,
+      "title": "PROMPT THROUGHPUT",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 6,
+        "x": 0,
+        "y": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#76B900"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#76B900",
+                "value": 0
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "gauge avg"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#E5C100"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "sum(rate(llamacpp:prompt_tokens_total[5m]))",
+          "refId": "A",
+          "editorMode": "code",
+          "range": true,
+          "legendFormat": "tok/s"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "llamacpp:prompt_tokens_seconds",
+          "refId": "B",
+          "editorMode": "code",
+          "range": true,
+          "legendFormat": "gauge avg"
+        }
+      ],
+      "pluginVersion": "11.5.2",
+      "description": "Counter rate vs gauge average (prompt_tokens_seconds is tokens/s, name historic)"
+    },
+    {
+      "id": 12,
+      "title": "GENERATION THROUGHPUT",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 6,
+        "x": 6,
+        "y": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#76B900"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#76B900",
+                "value": 0
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "gauge avg"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#E5C100"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "sum(rate(llamacpp:tokens_predicted_total[5m]))",
+          "refId": "A",
+          "editorMode": "code",
+          "range": true,
+          "legendFormat": "tok/s"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "llamacpp:predicted_tokens_seconds",
+          "refId": "B",
+          "editorMode": "code",
+          "range": true,
+          "legendFormat": "gauge avg"
+        }
+      ],
+      "pluginVersion": "11.5.2",
+      "description": "rate(tokens_predicted_total) vs gauge predicted_tokens_seconds"
+    },
+    {
+      "id": 13,
+      "title": "REQUESTS PROCESSING / DEFERRED",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 6,
+        "x": 12,
+        "y": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#76B900",
+                "value": 0
+              },
+              {
+                "color": "#E5C100",
+                "value": 2
+              },
+              {
+                "color": "#FF4D4D",
+                "value": 5
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "deferred"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#E5C100"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "sum(llamacpp:requests_processing)",
+          "refId": "A",
+          "editorMode": "code",
+          "range": true,
+          "legendFormat": "processing"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "sum(llamacpp:requests_deferred)",
+          "refId": "B",
+          "editorMode": "code",
+          "range": true,
+          "legendFormat": "deferred"
+        }
+      ],
+      "pluginVersion": "11.5.2",
+      "description": "Gauges snapshot - slots_processing/idle targets not yet exposed, using requests_*"
+    },
+    {
+      "id": 14,
+      "title": "KV CACHE USAGE",
+      "type": "gauge",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 6,
+        "x": 18,
+        "y": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#76B900",
+                "value": 0
+              },
+              {
+                "color": "#E5C100",
+                "value": 70
+              },
+              {
+                "color": "#FF4D4D",
+                "value": 90
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showThresholdMarkers": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "(llamacpp:kv_cache_usage_ratio * 100) or vector(0)",
+          "refId": "A",
+          "editorMode": "code",
+          "range": true,
+          "legendFormat": "kv cache %"
+        }
+      ],
+      "pluginVersion": "11.5.2",
+      "description": "Target metric kv_cache_usage_ratio *100 (0-1). If not exposed, shows 0 - your server currently does not expose kv_cache_usage_ratio or slots_*; panel will show 0 until PR adds it"
+    },
+    {
+      "id": 20,
+      "title": "TOKEN THROUGHPUT OVER TIME",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 0,
+        "y": 10
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "lineWidth": 1,
+            "fillOpacity": 6,
+            "gradientMode": "opacity",
+            "showPoints": "never",
+            "spanNulls": true
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "mean",
+            "lastNotNull"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "sum(rate(llamacpp:prompt_tokens_total[5m]))",
+          "refId": "A",
+          "editorMode": "code",
+          "range": true,
+          "legendFormat": "prompt"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "sum(rate(llamacpp:prompt_tokens_cached_total[5m]))",
+          "refId": "B",
+          "editorMode": "code",
+          "range": true,
+          "legendFormat": "cached"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "sum(rate(llamacpp:tokens_predicted_total[5m]))",
+          "refId": "C",
+          "editorMode": "code",
+          "range": true,
+          "legendFormat": "predicted"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "sum(rate(llamacpp:prompt_tokens_total[5m]))+sum(rate(llamacpp:prompt_tokens_cached_total[5m]))+sum(rate(llamacpp:tokens_predicted_total[5m]))",
+          "refId": "D",
+          "editorMode": "code",
+          "range": true,
+          "legendFormat": "total"
+        }
+      ],
+      "pluginVersion": "11.5.2",
+      "description": "Counters *_total rate - token flow"
+    },
+    {
+      "id": 21,
+      "title": "DECODE CALLS & BUSY SLOTS",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 10
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 0
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "sum(rate(llamacpp:n_decode_total[5m]))",
+          "refId": "A",
+          "editorMode": "code",
+          "range": true,
+          "legendFormat": "decodes/s"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "avg(llamacpp:n_busy_slots_per_decode)",
+          "refId": "B",
+          "editorMode": "code",
+          "range": true,
+          "legendFormat": "busy slots"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "sum(llamacpp:requests_processing)",
+          "refId": "C",
+          "editorMode": "code",
+          "range": true,
+          "legendFormat": "processing"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "sum(llamacpp:requests_deferred)",
+          "refId": "D",
+          "editorMode": "code",
+          "range": true,
+          "legendFormat": "deferred"
+        }
+      ],
+      "pluginVersion": "11.5.2",
+      "description": "n_decode_total rate + gauges"
+    },
+    {
+      "id": 30,
+      "title": "SPEC DECODE ACCEPTANCE (OVERALL)",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 0,
+        "y": 17
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#FF4D4D",
+                "value": 0
+              },
+              {
+                "color": "#E5C100",
+                "value": 60
+              },
+              {
+                "color": "#76B900",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "100 * sum(rate(llamacpp:spec_decode_num_accepted_tokens_total[5m])) / clamp_min(sum(rate(llamacpp:spec_decode_num_draft_tokens_total[5m])), 0.0001)",
+          "refId": "A",
+          "editorMode": "code",
+          "range": true,
+          "legendFormat": "accept %"
+        }
+      ],
+      "pluginVersion": "11.5.2",
+      "description": "Accepted draft tokens / draft tokens - 0 if speculative disabled"
+    },
+    {
+      "id": 31,
+      "title": "SPEC DRAFTS & ACCEPTED",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 8,
+        "y": 17
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "sum(rate(llamacpp:spec_decode_num_drafts_total[5m]))",
+          "refId": "A",
+          "editorMode": "code",
+          "range": true,
+          "legendFormat": "draft steps/s"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "sum(rate(llamacpp:spec_decode_num_draft_tokens_total[5m]))",
+          "refId": "B",
+          "editorMode": "code",
+          "range": true,
+          "legendFormat": "draft tokens/s"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "sum(rate(llamacpp:spec_decode_num_accepted_tokens_total[5m]))",
+          "refId": "C",
+          "editorMode": "code",
+          "range": true,
+          "legendFormat": "accepted/s"
+        }
+      ],
+      "pluginVersion": "11.5.2",
+      "description": "Verification steps and token counts"
+    },
+    {
+      "id": 32,
+      "title": "SPEC ACCEPTANCE BY POSITION",
+      "type": "bargauge",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 16,
+        "y": 17
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#76B900",
+                "value": 0
+              }
+            ]
+          },
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "options": {
+        "displayMode": "basic",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "100 * sum by (position) (rate(llamacpp:spec_decode_num_accepted_tokens_per_pos_total[5m])) / scalar(clamp_min(sum(rate(llamacpp:spec_decode_num_drafts_total[5m])), 0.0001))",
+          "refId": "A",
+          "editorMode": "code",
+          "range": true,
+          "legendFormat": "pos {{position}}"
+        }
+      ],
+      "pluginVersion": "11.5.2",
+      "description": "Labeled counter position=\"0\", \"1\", ... - Accepted at each position / drafts"
+    },
+    {
+      "id": 40,
+      "title": "PROMPT vs GENERATION TIME",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 0,
+        "y": 24
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "drawStyle": "line"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "sum(rate(llamacpp:prompt_seconds_total[5m]))",
+          "refId": "A",
+          "editorMode": "code",
+          "range": true,
+          "legendFormat": "prompt s/s"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "sum(rate(llamacpp:tokens_predicted_seconds_total[5m]))",
+          "refId": "B",
+          "editorMode": "code",
+          "range": true,
+          "legendFormat": "gen s/s"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "sum(rate(llamacpp:prompt_seconds_total[5m]))+sum(rate(llamacpp:tokens_predicted_seconds_total[5m]))",
+          "refId": "C",
+          "editorMode": "code",
+          "range": true,
+          "legendFormat": "total s/s"
+        }
+      ],
+      "pluginVersion": "11.5.2",
+      "description": "Total wall time spent in prompt vs generation"
+    },
+    {
+      "id": 41,
+      "title": "N_TOKENS_MAX (HIGH-WATER)",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 4,
+        "x": 8,
+        "y": 24
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#76B900"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "max(llamacpp:n_tokens_max)",
+          "refId": "A",
+          "editorMode": "code",
+          "range": true,
+          "legendFormat": "max seq len"
+        }
+      ],
+      "pluginVersion": "11.5.2",
+      "description": "Largest observed prompt+generation length, not live gauge"
+    },
+    {
+      "id": 42,
+      "title": "REQUESTS TOTAL (TARGET)",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 4,
+        "x": 12,
+        "y": 24
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#76B900"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "failed"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#FF4D4D"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "(sum(rate(llamacpp:requests_total[5m])) or vector(0))",
+          "refId": "A",
+          "editorMode": "code",
+          "range": true,
+          "legendFormat": "total"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "(sum(rate(llamacpp:requests_failed_total[5m])) or vector(0))",
+          "refId": "B",
+          "editorMode": "code",
+          "range": true,
+          "legendFormat": "failed"
+        }
+      ],
+      "pluginVersion": "11.5.2",
+      "description": "Target metrics - server does not yet expose requests_total/failed_total as counters; will show 0 until PR adds them. Use requests_processing/deferred gauges above for now"
+    },
+    {
+      "id": 43,
+      "title": "SLOTS IDLE / PROCESSING (TARGET)",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 16,
+        "y": 24
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "(sum(llamacpp:slots_idle) or vector(0))",
+          "refId": "A",
+          "editorMode": "code",
+          "range": true,
+          "legendFormat": "idle"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "(sum(llamacpp:slots_processing) or vector(0))",
+          "refId": "B",
+          "editorMode": "code",
+          "range": true,
+          "legendFormat": "processing"
+        }
+      ],
+      "pluginVersion": "11.5.2",
+      "description": "Target gauges - complement requests_* with slot-level concurrency, not yet exposed, shows 0"
+    }
+  ]
+}

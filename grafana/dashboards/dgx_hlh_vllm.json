@@ -21,7 +21,7 @@
     }
   ],
   "cursorSync": "Crosshair",
-  "description": "HLH vLLM (192.168.1.13:8000) \u2014 DGX Spark format adapted for HLH vLLM on hlh-docker 192.168.1.14. HLH:  Added an interactive output-tokens-per-second time-series near the top while retaining the top-row output TPS stat; moved speculative-decoding acceptance by position to the fifth row and request rate/success/errors to the following row. Includes the ultra-thin cloud-vs-local cost strip and NVIDIA-inspired visual theme: #76B900 green, dark gray, white, with amber/red reserved for operational warning states.",
+  "description": "DGX Spark vLLM dashboard (HLH adaptation for 192.168.1.13:8000). Source: pricekev91/DGX_Spark_Dashboard Grafana_Dashboards/vllm_25.1/dgx_spark_vllm_grafana_v1.yaml - datasource fixed to PBFA97CFB590B2093, spec-decode panels gracefully handle disabled MTP (show 0 instead of No Data). All other panels map 1:1 to live vLLM metrics (prompt/generation tokens, TTFT, KV cache, prefix cache) + Node Exporter.",
   "editable": true,
   "elements": {
     "panel-1": {
@@ -661,7 +661,7 @@
                     "kind": "DataQuery",
                     "spec": {
                       "editorMode": "code",
-                      "expr": "100 * sum by (position) (rate(vllm:spec_decode_num_accepted_tokens_per_pos_total[$__rate_interval])) / scalar(clamp_min(sum(rate(vllm:spec_decode_num_drafts_total[$__rate_interval])), 0.000001))",
+                      "expr": "100 * sum by (position) (rate(vllm:spec_decode_num_accepted_tokens_per_pos_total[$__rate_interval])) / scalar(clamp_min((sum(rate(vllm:spec_decode_num_drafts_total[$__rate_interval])) or vector(0.000001)), 0.000001))",
                       "legendFormat": "Position {{position}}",
                       "range": true
                     },
@@ -4931,7 +4931,7 @@
                     "kind": "DataQuery",
                     "spec": {
                       "editorMode": "code",
-                      "expr": "100 * sum(rate(vllm:spec_decode_num_accepted_tokens_total[$__rate_interval])) / clamp_min(sum(rate(vllm:spec_decode_num_draft_tokens_total[$__rate_interval])), 0.000001)",
+                      "expr": "100 * (sum(rate(vllm:spec_decode_num_accepted_tokens_total[$__rate_interval])) or vector(0)) / clamp_min((sum(rate(vllm:spec_decode_num_draft_tokens_total[$__rate_interval])) or vector(0.000001)), 0.000001)",
                       "legendFormat": "accepted draft tokens",
                       "range": true
                     },
