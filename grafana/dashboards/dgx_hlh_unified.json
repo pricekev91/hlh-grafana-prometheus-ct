@@ -21,7 +21,7 @@
     }
   ],
   "cursorSync": "Crosshair",
-  "description": "HLH vLLM (192.168.1.13:8000) — DGX Spark format adapted for HLH vLLM on hlh-docker 192.168.1.14. HLH:  Added an interactive output-tokens-per-second time-series near the top while retaining the top-row output TPS stat; moved speculative-decoding acceptance by position to the fifth row and request rate/success/errors to the following row. Includes the ultra-thin cloud-vs-local cost strip and NVIDIA-inspired visual theme: #76B900 green, dark gray, white, with amber/red reserved for operational warning states.",
+  "description": "HLH vLLM (192.168.1.13:8000) \u2014 DGX Spark format adapted for HLH vLLM on hlh-docker 192.168.1.14. HLH:  Added an interactive output-tokens-per-second time-series near the top while retaining the top-row output TPS stat; moved speculative-decoding acceptance by position to the fifth row and request rate/success/errors to the following row. Includes the ultra-thin cloud-vs-local cost strip and NVIDIA-inspired visual theme: #76B900 green, dark gray, white, with amber/red reserved for operational warning states.",
   "editable": true,
   "elements": {
     "panel-1": {
@@ -71,7 +71,7 @@
                   "fixedColor": "#76B900",
                   "mode": "fixed"
                 },
-                "noValue": "—",
+                "noValue": "\u2014",
                 "thresholds": {
                   "mode": "absolute",
                   "steps": [
@@ -155,7 +155,7 @@
                   "mode": "fixed"
                 },
                 "decimals": 2,
-                "noValue": "—",
+                "noValue": "\u2014",
                 "thresholds": {
                   "mode": "absolute",
                   "steps": [
@@ -239,7 +239,7 @@
                   "mode": "fixed"
                 },
                 "decimals": 2,
-                "noValue": "—",
+                "noValue": "\u2014",
                 "thresholds": {
                   "mode": "absolute",
                   "steps": [
@@ -323,7 +323,7 @@
                   "mode": "fixed"
                 },
                 "decimals": 2,
-                "noValue": "—",
+                "noValue": "\u2014",
                 "thresholds": {
                   "mode": "absolute",
                   "steps": [
@@ -407,7 +407,7 @@
                   "mode": "fixed"
                 },
                 "decimals": 2,
-                "noValue": "—",
+                "noValue": "\u2014",
                 "thresholds": {
                   "mode": "absolute",
                   "steps": [
@@ -491,7 +491,7 @@
                 },
                 "max": 100,
                 "min": 0,
-                "noValue": "—",
+                "noValue": "\u2014",
                 "thresholds": {
                   "mode": "absolute",
                   "steps": [
@@ -595,7 +595,7 @@
                 },
                 "max": 100,
                 "min": 0,
-                "noValue": "—",
+                "noValue": "\u2014",
                 "thresholds": {
                   "mode": "absolute",
                   "steps": [
@@ -692,7 +692,7 @@
                 "decimals": 1,
                 "max": 100,
                 "min": 0,
-                "noValue": "—",
+                "noValue": "\u2014",
                 "thresholds": {
                   "mode": "absolute",
                   "steps": [
@@ -859,7 +859,7 @@
                     "mode": "off"
                   }
                 },
-                "noValue": "—",
+                "noValue": "\u2014",
                 "thresholds": {
                   "mode": "absolute",
                   "steps": [
@@ -1070,7 +1070,7 @@
                     "mode": "off"
                   }
                 },
-                "noValue": "—",
+                "noValue": "\u2014",
                 "thresholds": {
                   "mode": "absolute",
                   "steps": [
@@ -1281,7 +1281,7 @@
                     "mode": "off"
                   }
                 },
-                "noValue": "—",
+                "noValue": "\u2014",
                 "thresholds": {
                   "mode": "absolute",
                   "steps": [
@@ -1492,7 +1492,7 @@
                     "mode": "off"
                   }
                 },
-                "noValue": "—",
+                "noValue": "\u2014",
                 "thresholds": {
                   "mode": "absolute",
                   "steps": [
@@ -1703,7 +1703,7 @@
                     "mode": "off"
                   }
                 },
-                "noValue": "—",
+                "noValue": "\u2014",
                 "thresholds": {
                   "mode": "absolute",
                   "steps": [
@@ -1868,7 +1868,7 @@
                     "mode": "off"
                   }
                 },
-                "noValue": "—",
+                "noValue": "\u2014",
                 "thresholds": {
                   "mode": "absolute",
                   "steps": [
@@ -1957,7 +1957,7 @@
                   "fixedColor": "#76B900",
                   "mode": "fixed"
                 },
-                "noValue": "—",
+                "noValue": "\u2014",
                 "thresholds": {
                   "mode": "absolute",
                   "steps": [
@@ -2095,7 +2095,7 @@
                     "mode": "off"
                   }
                 },
-                "noValue": "—",
+                "noValue": "\u2014",
                 "thresholds": {
                   "mode": "absolute",
                   "steps": [
@@ -2215,7 +2215,7 @@
                   "fixedColor": "#76B900",
                   "mode": "fixed"
                 },
-                "noValue": "—",
+                "noValue": "\u2014",
                 "thresholds": {
                   "mode": "absolute",
                   "steps": [
@@ -2306,7 +2306,7 @@
                   "fixedColor": "#76B900",
                   "mode": "fixed"
                 },
-                "noValue": "—",
+                "noValue": "\u2014",
                 "thresholds": {
                   "mode": "absolute",
                   "steps": [
@@ -2396,7 +2396,7 @@
                 "color": {
                   "mode": "thresholds"
                 },
-                "noValue": "—",
+                "noValue": "\u2014",
                 "thresholds": {
                   "mode": "absolute",
                   "steps": [
@@ -2496,7 +2496,7 @@
                 },
                 "max": 100,
                 "min": 0,
-                "noValue": "—",
+                "noValue": "\u2014",
                 "thresholds": {
                   "mode": "absolute",
                   "steps": [
@@ -2599,7 +2599,7 @@
                 },
                 "max": 100,
                 "min": 0,
-                "noValue": "—",
+                "noValue": "\u2014",
                 "thresholds": {
                   "mode": "absolute",
                   "steps": [
@@ -2702,7 +2702,7 @@
                 },
                 "max": 100,
                 "min": 0,
-                "noValue": "—",
+                "noValue": "\u2014",
                 "thresholds": {
                   "mode": "absolute",
                   "steps": [
@@ -2806,7 +2806,7 @@
                 },
                 "max": 2,
                 "min": 0,
-                "noValue": "—",
+                "noValue": "\u2014",
                 "thresholds": {
                   "mode": "absolute",
                   "steps": [
@@ -2910,7 +2910,7 @@
                   "fixedColor": "#76B900",
                   "mode": "fixed"
                 },
-                "noValue": "—",
+                "noValue": "\u2014",
                 "thresholds": {
                   "mode": "absolute",
                   "steps": [
@@ -3045,7 +3045,7 @@
                   "fixedColor": "#76B900",
                   "mode": "fixed"
                 },
-                "noValue": "—",
+                "noValue": "\u2014",
                 "thresholds": {
                   "mode": "absolute",
                   "steps": [
@@ -3159,7 +3159,7 @@
                   "fixedColor": "#76B900",
                   "mode": "fixed"
                 },
-                "noValue": "—",
+                "noValue": "\u2014",
                 "thresholds": {
                   "mode": "absolute",
                   "steps": [
@@ -3318,7 +3318,7 @@
                     "mode": "off"
                   }
                 },
-                "noValue": "—",
+                "noValue": "\u2014",
                 "thresholds": {
                   "mode": "absolute",
                   "steps": [
@@ -3529,7 +3529,7 @@
                     "mode": "off"
                   }
                 },
-                "noValue": "—",
+                "noValue": "\u2014",
                 "thresholds": {
                   "mode": "absolute",
                   "steps": [
@@ -3704,7 +3704,7 @@
                     "mode": "off"
                   }
                 },
-                "noValue": "—",
+                "noValue": "\u2014",
                 "thresholds": {
                   "mode": "absolute",
                   "steps": [
@@ -3879,7 +3879,7 @@
                     "mode": "off"
                   }
                 },
-                "noValue": "—",
+                "noValue": "\u2014",
                 "thresholds": {
                   "mode": "absolute",
                   "steps": [
@@ -4000,7 +4000,7 @@
                 },
                 "max": 100,
                 "min": 0,
-                "noValue": "—",
+                "noValue": "\u2014",
                 "thresholds": {
                   "mode": "absolute",
                   "steps": [
@@ -4154,7 +4154,7 @@
                     "mode": "off"
                   }
                 },
-                "noValue": "—",
+                "noValue": "\u2014",
                 "thresholds": {
                   "mode": "absolute",
                   "steps": [
@@ -4274,7 +4274,7 @@
                   "fixedColor": "#76B900",
                   "mode": "fixed"
                 },
-                "noValue": "—",
+                "noValue": "\u2014",
                 "thresholds": {
                   "mode": "absolute",
                   "steps": [
@@ -4412,7 +4412,7 @@
                     "mode": "off"
                   }
                 },
-                "noValue": "—",
+                "noValue": "\u2014",
                 "thresholds": {
                   "mode": "absolute",
                   "steps": [
@@ -4581,7 +4581,7 @@
                     "mode": "off"
                   }
                 },
-                "noValue": "—",
+                "noValue": "\u2014",
                 "thresholds": {
                   "mode": "absolute",
                   "steps": [
@@ -4771,7 +4771,7 @@
                     "mode": "off"
                   }
                 },
-                "noValue": "—",
+                "noValue": "\u2014",
                 "thresholds": {
                   "mode": "absolute",
                   "steps": [
@@ -4876,7 +4876,7 @@
                   "fixedColor": "#76B900",
                   "mode": "fixed"
                 },
-                "noValue": "—",
+                "noValue": "\u2014",
                 "thresholds": {
                   "mode": "absolute",
                   "steps": [
@@ -4962,7 +4962,7 @@
                 "decimals": 1,
                 "max": 100,
                 "min": 0,
-                "noValue": "—",
+                "noValue": "\u2014",
                 "thresholds": {
                   "mode": "absolute",
                   "steps": [
@@ -5132,7 +5132,7 @@
                     "mode": "off"
                   }
                 },
-                "noValue": "—",
+                "noValue": "\u2014",
                 "thresholds": {
                   "mode": "absolute",
                   "steps": [
@@ -5343,7 +5343,7 @@
                     "mode": "off"
                   }
                 },
-                "noValue": "—",
+                "noValue": "\u2014",
                 "thresholds": {
                   "mode": "absolute",
                   "steps": [
@@ -5539,7 +5539,7 @@
                     "mode": "off"
                   }
                 },
-                "noValue": "—",
+                "noValue": "\u2014",
                 "thresholds": {
                   "mode": "absolute",
                   "steps": [
@@ -5693,7 +5693,7 @@
                     "mode": "off"
                   }
                 },
-                "noValue": "—",
+                "noValue": "\u2014",
                 "thresholds": {
                   "mode": "absolute",
                   "steps": [
@@ -6320,7 +6320,8 @@
     "gpu-fixed",
     "no-missing-gpu-metrics",
     "nvidia-theme",
-    "speculative-decoding"
+    "speculative-decoding",
+    "hlh"
   ],
   "timeSettings": {
     "autoRefresh": "5s",
@@ -6342,6 +6343,35 @@
     "timezone": "browser",
     "to": "now"
   },
-  "title": "NVIDIA DGX Spark — Throughput Without Contention v8 Output TPS Trend + NVIDIA Refined Theme",
-  "variables": [{"name": "engine", "type": "custom", "label": "Engine", "hide": 0, "current": {"text": "All", "value": "$__all"}, "options": [{"text": "All", "value": "$__all", "selected": true}, {"text": "vllm", "value": "vllm"}, {"text": "llamacpp", "value": "llamacpp"}], "includeAll": true, "multi": false}]
+  "title": "HLH DGX \u2014 Unified (vLLM + llama.cpp)",
+  "variables": [
+    {
+      "name": "engine",
+      "type": "custom",
+      "label": "Engine",
+      "hide": 0,
+      "current": {
+        "text": "All",
+        "value": "$__all"
+      },
+      "options": [
+        {
+          "text": "All",
+          "value": "$__all",
+          "selected": true
+        },
+        {
+          "text": "vllm",
+          "value": "vllm"
+        },
+        {
+          "text": "llamacpp",
+          "value": "llamacpp"
+        }
+      ],
+      "includeAll": true,
+      "multi": false
+    }
+  ],
+  "uid": "dgx-hlh-unified"
 }
