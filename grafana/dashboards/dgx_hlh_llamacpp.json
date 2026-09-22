@@ -6344,6 +6344,5 @@
     "to": "now"
   },
   "title": "HLH DGX \u2014 llama.cpp (192.168.1.12:80)",
-  "variables": [],
-  "uid": "dgx-hlh-llamacpp"
+  "variables": []
 }

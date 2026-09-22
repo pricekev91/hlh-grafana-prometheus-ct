@@ -6344,6 +6344,5 @@
     "to": "now"
   },
   "title": "HLH DGX \u2014 vLLM (192.168.1.13:8000)",
-  "variables": [],
-  "uid": "dgx-hlh-vllm"
+  "variables": []
 }
