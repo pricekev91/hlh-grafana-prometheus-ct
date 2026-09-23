@@ -1,6 +1,6 @@
 {
-  "title": "llama-opencode",
-  "uid": "llama-opencode",
+  "title": "hlh-llama.cpp-igpu",
+  "uid": "hlh-llama-cpp-igpu",
   "description": "llama-opencode - llama.cpp dashboard (classic panels, Grafana 11.5). Source: official llama.cpp metrics endpoint + Target roadmap metrics. Datasource PBFA97CFB590B2093 for 192.168.1.12:80. Counters: prompt_tokens_total, prompt_tokens_cached_total (Target but present), prompt_seconds_total, tokens_predicted_total, tokens_predicted_seconds_total, n_decode_total, n_tokens_max, spec_decode_*. Gauges: prompt_tokens_seconds, predicted_tokens_seconds, requests_processing/deferred, n_busy_slots_per_decode, kv_cache_usage_ratio/slots_* (Target, fallback 0).",
   "tags": [
     "llamacpp",
