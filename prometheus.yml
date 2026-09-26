@@ -1,5 +1,5 @@
 # Stage 0 draft — prometheus.yml for hlh-docker macvlan 192.168.1.14
-# Scrapes: vLLM 192.168.1.13:8000 and llama.cpp 192.168.1.12:80
+# Scrapes: vLLM 192.168.1.13:8000, llama.cpp 192.168.1.12:80 + 192.168.1.11:80 (hlh-ai-engine-epu, v100)
 # Validate: promtool check config prometheus.yml
 global:
   scrape_interval: 15s
@@ -28,6 +28,10 @@ scrape_configs:
         labels:
           engine: llamacpp
           instance: hlh-ai-engine
+      - targets: ['192.168.1.11:80']
+        labels:
+          engine: llamacpp
+          instance: hlh-ai-engine-epu
 
   - job_name: node
     static_configs:

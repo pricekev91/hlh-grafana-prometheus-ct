@@ -1,6 +1,6 @@
 # Stage 1 — hlh-grafana-prometheus-ct
 # Target: hlh-docker LXC 109 (192.168.1.9) → macvlan dedicated IP 192.168.1.14
-# Grafana  http://192.168.1.14:3000  (macvlan dedicated IP per user request)
+# Grafana  http://192.168.1.14  (port 80, macvlan dedicated IP per user request)
 # Prometheus http://prometheus:9090 internal (via internal bridge); external UI optional via Grafana or extra macvlan IP
 # Storage: /srv/data/grafana-prometheus on host ZFS RaidZ1-6TB/hlh-docker-data (mp0) — see hlh-docker/deploy-hlh-docker.sh:281
 services:
@@ -46,11 +46,15 @@ services:
     image: grafana/grafana:11.5.2
     container_name: grafana
     restart: unless-stopped
+    # Serve on port 80 so Grafana is reachable at http://192.168.1.14 (no port suffix).
+    # Container process runs as uid 472 (grafana) — NET_BIND_SERVICE needed for port 80.
+    cap_add:
+      - NET_BIND_SERVICE
     environment:
       - GF_SECURITY_ADMIN_USER=${GF_SECURITY_ADMIN_USER:-admin}
       - GF_SECURITY_ADMIN_PASSWORD=${GF_SECURITY_ADMIN_PASSWORD:-admin}
       - GF_USERS_ALLOW_SIGN_UP=false
-      - GF_SERVER_HTTP_PORT=3000
+      - GF_SERVER_HTTP_PORT=${GRAFANA_PORT:-80}
     volumes:
       - grafana_data:/var/lib/grafana
       - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro

@@ -3,7 +3,7 @@
 # hlh-grafana-prometheus-ct — Deploy Prometheus + Grafana to hlh-docker
 # ============================================================================
 # Target: hlh-docker LXC 109 (192.168.1.9) → macvlan dedicated IP 192.168.1.14
-#   Grafana  http://192.168.1.14:3000  (macvlan, dedicated IP per user request)
+#   Grafana  http://192.168.1.14  (port 80, macvlan, dedicated IP per user request)
 #   Prometheus internal http://prometheus:9090 (Grafana datasource)
 # Storage: /srv/data/grafana-prometheus on host ZFS RaidZ1-6TB/hlh-docker-data (mp0)
 #
@@ -26,6 +26,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LXC_VMID="${HLH_LXC_VMID:-109}"
 LXC_IP="${HLH_LXC_IP:-192.168.1.9}"
 MONITOR_IP="${MONITOR_IP:-192.168.1.14}"
+GRAFANA_PORT="${GRAFANA_PORT:-80}"
 MACVLAN_NAME="${MACVLAN_NAME:-macvlan}"
 MACVLAN_PARENT="${MACVLAN_PARENT:-eth0}"
 MACVLAN_SUBNET="${MACVLAN_SUBNET:-192.168.1.0/24}"
@@ -71,7 +72,7 @@ Examples:
 Env:
   MONITOR_IP=${MONITOR_IP}  MACVLAN_NAME=${MACVLAN_NAME}  PROM_RETENTION=${PROM_RETENTION}
 
-Grafana:  http://${MONITOR_IP}:3000
+Grafana:  http://${MONITOR_IP}:${GRAFANA_PORT}
 Prometheus (internal): http://prometheus:9090
 Data:     ${DATA_DIR}/prometheus_data + ${DATA_DIR}/grafana_data (ZFS bind via mp0)
 USAGE
@@ -175,15 +176,15 @@ if [[ "$MODE" == "plan" ]]; then
   info "Would verify:"
   info "  docker ps --filter name=prometheus/grafana"
   info "  docker inspect grafana → IP ${MONITOR_IP} on ${MACVLAN_NAME}"
-  info "  curl -sf http://${MONITOR_IP}:3000/api/health (Grafana)"
+  info "  curl -sf http://${MONITOR_IP}:${GRAFANA_PORT}/api/health (Grafana)"
   info "  docker exec prometheus wget -qO- http://localhost:9090/-/healthy (Prometheus)"
   printf "\n"
   printf "  %-22s %s\n" "Host LXC:" "${LXC_VMID} hlh-docker ${LXC_IP}"
   printf "  %-22s %s\n" "Context:" "$([[ $IN_LXC -eq 1 ]] && echo "inside hlh-docker (direct)" || ([[ $HAS_PCT -eq 1 ]] && echo "prox01 via pct" || echo "laptop"))"
   printf "  %-22s %s\n" "Service IP (macvlan):" "${MONITOR_IP} (${MACVLAN_NAME} parent ${MACVLAN_PARENT})"
-  printf "  %-22s %s\n" "Grafana:" "http://${MONITOR_IP}:3000"
+  printf "  %-22s %s\n" "Grafana:" "http://${MONITOR_IP}:${GRAFANA_PORT}"
   printf "  %-22s %s\n" "Prometheus:" "http://prometheus:9090 internal"
-  printf "  %-22s %s\n" "Scrape targets:" "vllm 192.168.1.13:8000, llamacpp 192.168.1.12:80"
+  printf "  %-22s %s\n" "Scrape targets:" "vllm 192.168.1.13:8000, llamacpp 192.168.1.12:80 + 192.168.1.11:80 (epu)"
   printf "  %-22s %s\n" "Retention:" "${PROM_RETENTION}"
   printf "  %-22s %s\n" "Data (ZFS mp0):" "${DATA_DIR}"
   info "Plan complete — no changes made. Run with --apply to deploy."
@@ -335,10 +336,15 @@ else
   fi
 fi
 
-# Compose resolves the external macvlan name via ${MACVLAN_NAME:-macvlan}, so the
-# target .env must pin the effective network (e.g. bench_lan when reusing).
-lxc_exec "touch '${DATA_DIR}/.env' && (grep -q '^MACVLAN_NAME=' '${DATA_DIR}/.env' && sed -i 's/^MACVLAN_NAME=.*/MACVLAN_NAME=${EFFECTIVE_MACVLAN}/' '${DATA_DIR}/.env' || echo 'MACVLAN_NAME=${EFFECTIVE_MACVLAN}' >> '${DATA_DIR}/.env') && grep '^MACVLAN_NAME=' '${DATA_DIR}/.env'"
-ok "pinned MACVLAN_NAME=${EFFECTIVE_MACVLAN} in target .env"
+# Compose resolves ${MACVLAN_NAME:-macvlan} and ${GRAFANA_PORT:-80} from the
+# project .env, so the target .env must pin the effective values.
+pin_env() {
+  local key="$1" val="$2"
+  lxc_exec "touch '${DATA_DIR}/.env' && (grep -q '^${key}=' '${DATA_DIR}/.env' && sed -i 's/^${key}=.*/${key}=${val}/' '${DATA_DIR}/.env' || echo '${key}=${val}' >> '${DATA_DIR}/.env') && grep '^${key}=' '${DATA_DIR}/.env'"
+}
+pin_env MACVLAN_NAME "${EFFECTIVE_MACVLAN}"
+pin_env GRAFANA_PORT "${GRAFANA_PORT}"
+ok "pinned MACVLAN_NAME=${EFFECTIVE_MACVLAN} + GRAFANA_PORT=${GRAFANA_PORT} in target .env"
 
 if lxc_exec "command -v promtool >/dev/null 2>&1"; then
   if lxc_exec "promtool check config '${DATA_DIR}/prometheus.yml' >/dev/null 2>&1"; then
@@ -426,21 +432,21 @@ lxc_exec "docker exec prometheus wget -qO- http://localhost:9090/api/v1/targets 
 # in pct mode the LAN-side check from prox01 is authoritative.
 grafana_healthy() {
   if [[ $HAS_PCT -eq 1 && $IN_LXC -eq 0 ]] && command -v curl >/dev/null 2>&1; then
-    if curl -sf -m 5 "http://${MONITOR_IP}:3000/api/health" 2>/dev/null | grep -q ok; then return 0; fi
+    if curl -sf -m 5 "http://${MONITOR_IP}:${GRAFANA_PORT}/api/health" 2>/dev/null | grep -q ok; then return 0; fi
   fi
-  lxc_exec "curl -sf http://${MONITOR_IP}:3000/api/health 2>/dev/null | grep -q ok || curl -sf http://localhost:3000/api/health 2>/dev/null | grep -q ok || wget -qO- http://${MONITOR_IP}:3000/api/health 2>/dev/null | grep -q ok"
+  lxc_exec "curl -sf http://${MONITOR_IP}:${GRAFANA_PORT}/api/health 2>/dev/null | grep -q ok || curl -sf http://localhost:${GRAFANA_PORT}/api/health 2>/dev/null | grep -q ok || wget -qO- http://${MONITOR_IP}:${GRAFANA_PORT}/api/health 2>/dev/null | grep -q ok"
 }
 info "Grafana health (macvlan)..."
 for i in 1 2 3 4 5 6; do
   if grafana_healthy; then
-    ok "Grafana healthy at http://${MONITOR_IP}:3000"
+    ok "Grafana healthy at http://${MONITOR_IP}:${GRAFANA_PORT}"
     break
   fi
   sleep 3
   if [[ $i -eq 6 ]]; then
     warn "Grafana health check failed after 18s"
     lxc_exec "docker logs grafana 2>&1 | tail -30 || true"
-    lxc_exec "curl -v http://${MONITOR_IP}:3000/api/health 2>&1 | head -20 || curl -v http://localhost:3000/api/health 2>&1 | head -20 || true"
+    lxc_exec "curl -v http://${MONITOR_IP}:${GRAFANA_PORT}/api/health 2>&1 | head -20 || curl -v http://localhost:${GRAFANA_PORT}/api/health 2>&1 | head -20 || true"
   fi
 done
 
@@ -454,13 +460,13 @@ section "Deploy summary"
 printf "  %-22s %s\n" "Host LXC:" "${LXC_VMID} hlh-docker ${LXC_IP}"
 printf "  %-22s %s\n" "Context:" "$([[ $IN_LXC -eq 1 ]] && echo "inside hlh-docker (direct)" || echo "prox01 via pct")"
 printf "  %-22s %s\n" "Service IP (macvlan):" "${MONITOR_IP} (${EFFECTIVE_MACVLAN} parent ${MACVLAN_PARENT})"
-printf "  %-22s %s\n" "Grafana:" "http://${MONITOR_IP}:3000 (admin via .env or admin/admin)"
+printf "  %-22s %s\n" "Grafana:" "http://${MONITOR_IP}:${GRAFANA_PORT} (admin via .env or admin/admin)"
 printf "  %-22s %s\n" "Prometheus:" "http://prometheus:9090 internal"
 printf "  %-22s %s\n" "Data (ZFS mp0):" "${DATA_DIR}"
-printf "  %-22s %s\n" "Scrape:" "vllm 192.168.1.13:8000, llamacpp 192.168.1.12:80 (15s)"
+printf "  %-22s %s\n" "Scrape:" "vllm 192.168.1.13:8000, llamacpp 192.168.1.12:80 + 192.168.1.11:80 epu (15s)"
 printf "  %-22s %s\n" "Retention:" "${PROM_RETENTION}"
 echo ""
-ok "Deploy complete — Grafana at http://${MONITOR_IP}:3000"
+ok "Deploy complete — Grafana at http://${MONITOR_IP}:${GRAFANA_PORT}"
 info "Next: open Grafana, datasource http://prometheus:9090 already provisioned, import dashboards"
 if [[ $IN_LXC -eq 1 ]]; then
   info "Logs: docker logs -f grafana / prometheus"
