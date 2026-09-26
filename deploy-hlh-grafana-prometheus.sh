@@ -2,15 +2,15 @@
 # ============================================================================
 # hlh-grafana-prometheus-ct — Deploy Prometheus + Grafana to hlh-docker
 # ============================================================================
-# Target: hlh-docker LXC 111 (192.168.1.9) → macvlan dedicated IP 192.168.1.14
+# Target: hlh-docker LXC 109 (192.168.1.9) → macvlan dedicated IP 192.168.1.14
 #   Grafana  http://192.168.1.14:3000  (macvlan, dedicated IP per user request)
 #   Prometheus internal http://prometheus:9090 (Grafana datasource)
 # Storage: /srv/data/grafana-prometheus on host ZFS RaidZ1-6TB/hlh-docker-data (mp0)
 #
 # Runs in two modes:
-#   1. Inside hlh-docker (recommended): run directly on LXC 111 (root@hlh-docker)
+#   1. Inside hlh-docker (recommended): run directly on LXC 109 (root@hlh-docker)
 #      — uses docker directly, DATA_DIR=/srv/data/grafana-prometheus
-#   2. On prox01: via pct exec 111 (requires pct)
+#   2. On prox01: via pct exec 109 (requires pct)
 #
 # Usage (inside hlh-docker):
 #   ./deploy-hlh-grafana-prometheus.sh --plan    # dry-run
@@ -23,7 +23,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-LXC_VMID="${HLH_LXC_VMID:-111}"
+LXC_VMID="${HLH_LXC_VMID:-109}"
 LXC_IP="${HLH_LXC_IP:-192.168.1.9}"
 MONITOR_IP="${MONITOR_IP:-192.168.1.14}"
 MACVLAN_NAME="${MACVLAN_NAME:-macvlan}"
@@ -66,7 +66,7 @@ Examples:
   ./deploy-hlh-grafana-prometheus.sh --apply
 
   # on prox01:
-  pct push 111 deploy-hlh-grafana-prometheus.sh /root/deploy.sh && pct exec 111 -- bash /root/deploy.sh --apply
+  pct push 109 deploy-hlh-grafana-prometheus.sh /root/deploy.sh && pct exec 109 -- bash /root/deploy.sh --apply
 
 Env:
   MONITOR_IP=${MONITOR_IP}  MACVLAN_NAME=${MACVLAN_NAME}  PROM_RETENTION=${PROM_RETENTION}

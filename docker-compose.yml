@@ -1,5 +1,5 @@
 # Stage 1 — hlh-grafana-prometheus-ct
-# Target: hlh-docker LXC 111 (192.168.1.9) → macvlan dedicated IP 192.168.1.14
+# Target: hlh-docker LXC 109 (192.168.1.9) → macvlan dedicated IP 192.168.1.14
 # Grafana  http://192.168.1.14:3000  (macvlan dedicated IP per user request)
 # Prometheus http://prometheus:9090 internal (via internal bridge); external UI optional via Grafana or extra macvlan IP
 # Storage: /srv/data/grafana-prometheus on host ZFS RaidZ1-6TB/hlh-docker-data (mp0) — see hlh-docker/deploy-hlh-docker.sh:281
