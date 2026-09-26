@@ -263,18 +263,32 @@ ok "data dirs ready: ${DATA_DIR}/prometheus_data + grafana_data (472:472)"
 
 # --- ensure macvlan network ---
 section "Macvlan network (${MACVLAN_NAME})"
+EFFECTIVE_MACVLAN="${MACVLAN_NAME}"
 if lxc_exec "docker network inspect '${MACVLAN_NAME}' >/dev/null 2>&1"; then
   ok "macvlan network ${MACVLAN_NAME} already exists"
   lxc_exec "docker network inspect '${MACVLAN_NAME}' | grep -q '${MACVLAN_SUBNET}' && echo 'subnet ok' || echo 'subnet differs (manual check)'"
 else
-  info "Creating macvlan ${MACVLAN_NAME} parent=${MACVLAN_PARENT} subnet=${MACVLAN_SUBNET} gw=${MACVLAN_GATEWAY}"
-  if lxc_exec "docker network create -d macvlan --subnet '${MACVLAN_SUBNET}' --gateway '${MACVLAN_GATEWAY}' -o parent='${MACVLAN_PARENT}' '${MACVLAN_NAME}' >/dev/null"; then
-    ok "macvlan network created"
+  # Reuse an existing macvlan network already claiming this subnet (e.g. bench_lan).
+  # Docker refuses a second macvlan on the same pool: "Pool overlaps with other
+  # one on this address space". Reusing keeps Grafana on .14 without overlap.
+  OVERLAP="$(lxc_exec "docker network ls --filter driver=macvlan --format '{{.Name}}' 2>/dev/null | while read -r n; do if docker network inspect \"\$n\" 2>/dev/null | grep -q '${MACVLAN_SUBNET}'; then echo \"\$n\"; break; fi; done" | tr -d '\r' | xargs || true)"
+  if [[ -n "${OVERLAP:-}" ]]; then
+    warn "network ${MACVLAN_NAME} missing but existing macvlan '${OVERLAP}' already uses ${MACVLAN_SUBNET} — reusing it"
+    EFFECTIVE_MACVLAN="${OVERLAP}"
+    ok "macvlan network ${EFFECTIVE_MACVLAN} reused (subnet ${MACVLAN_SUBNET})"
   else
-    fail "Failed to create macvlan ${MACVLAN_NAME}. Check parent: ip link" >&2
-    lxc_exec "ip link; docker network ls"
-    exit 1
+    info "Creating macvlan ${MACVLAN_NAME} parent=${MACVLAN_PARENT} subnet=${MACVLAN_SUBNET} gw=${MACVLAN_GATEWAY}"
+    if lxc_exec "docker network create -d macvlan --subnet '${MACVLAN_SUBNET}' --gateway '${MACVLAN_GATEWAY}' -o parent='${MACVLAN_PARENT}' '${MACVLAN_NAME}' >/dev/null"; then
+      ok "macvlan network created"
+    else
+      fail "Failed to create macvlan ${MACVLAN_NAME}. Check parent: ip link" >&2
+      lxc_exec "ip link; docker network ls; docker network inspect bench_lan 2>&1 | head -30 || true"
+      exit 1
+    fi
   fi
+fi
+if [[ "${EFFECTIVE_MACVLAN}" != "${MACVLAN_NAME}" ]]; then
+  info "Effective macvlan network: ${EFFECTIVE_MACVLAN} (requested ${MACVLAN_NAME}) — compose will use it via MACVLAN_NAME"
 fi
 
 if lxc_exec "getent hosts ${MONITOR_IP} >/dev/null 2>&1 || ping -c1 -W2 ${MONITOR_IP} >/dev/null 2>&1"; then
@@ -320,6 +334,11 @@ else
     push_file "${SCRIPT_DIR}/.env.example" "${DATA_DIR}/.env.example"
   fi
 fi
+
+# Compose resolves the external macvlan name via ${MACVLAN_NAME:-macvlan}, so the
+# target .env must pin the effective network (e.g. bench_lan when reusing).
+lxc_exec "touch '${DATA_DIR}/.env' && (grep -q '^MACVLAN_NAME=' '${DATA_DIR}/.env' && sed -i 's/^MACVLAN_NAME=.*/MACVLAN_NAME=${EFFECTIVE_MACVLAN}/' '${DATA_DIR}/.env' || echo 'MACVLAN_NAME=${EFFECTIVE_MACVLAN}' >> '${DATA_DIR}/.env') && grep '^MACVLAN_NAME=' '${DATA_DIR}/.env''"
+ok "pinned MACVLAN_NAME=${EFFECTIVE_MACVLAN} in target .env"
 
 if lxc_exec "command -v promtool >/dev/null 2>&1"; then
   if lxc_exec "promtool check config '${DATA_DIR}/prometheus.yml' >/dev/null 2>&1"; then

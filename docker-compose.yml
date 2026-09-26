@@ -82,4 +82,4 @@ networks:
     driver: bridge
   macvlan:
     external: true
-    name: macvlan
+    name: ${MACVLAN_NAME:-macvlan}
