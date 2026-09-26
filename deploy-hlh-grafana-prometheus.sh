@@ -337,7 +337,7 @@ fi
 
 # Compose resolves the external macvlan name via ${MACVLAN_NAME:-macvlan}, so the
 # target .env must pin the effective network (e.g. bench_lan when reusing).
-lxc_exec "touch '${DATA_DIR}/.env' && (grep -q '^MACVLAN_NAME=' '${DATA_DIR}/.env' && sed -i 's/^MACVLAN_NAME=.*/MACVLAN_NAME=${EFFECTIVE_MACVLAN}/' '${DATA_DIR}/.env' || echo 'MACVLAN_NAME=${EFFECTIVE_MACVLAN}' >> '${DATA_DIR}/.env') && grep '^MACVLAN_NAME=' '${DATA_DIR}/.env''"
+lxc_exec "touch '${DATA_DIR}/.env' && (grep -q '^MACVLAN_NAME=' '${DATA_DIR}/.env' && sed -i 's/^MACVLAN_NAME=.*/MACVLAN_NAME=${EFFECTIVE_MACVLAN}/' '${DATA_DIR}/.env' || echo 'MACVLAN_NAME=${EFFECTIVE_MACVLAN}' >> '${DATA_DIR}/.env') && grep '^MACVLAN_NAME=' '${DATA_DIR}/.env'"
 ok "pinned MACVLAN_NAME=${EFFECTIVE_MACVLAN} in target .env"
 
 if lxc_exec "command -v promtool >/dev/null 2>&1"; then
