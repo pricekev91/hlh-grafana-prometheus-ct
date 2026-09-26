@@ -142,10 +142,14 @@ if [[ "$MODE" == "plan" ]]; then
   for req in docker-compose.yml prometheus.yml grafana/provisioning/datasources/datasource.yml grafana/provisioning/dashboards/dashboards.yml; do
     if [[ ! -f "${SCRIPT_DIR}/${req}" ]]; then fail "Missing ${req} in ${SCRIPT_DIR}" >&2; exit 1; fi
   done
-  if docker compose -f "${SCRIPT_DIR}/docker-compose.yml" config >/dev/null 2>&1; then
+  if ! command -v docker >/dev/null 2>&1; then
+    warn "docker not found locally — skipping local compose validation (will validate in target on --apply)"
+  elif ! docker compose version >/dev/null 2>&1; then
+    warn "docker compose plugin not found locally — skipping local compose validation (will validate in target on --apply)"
+  elif docker compose -f "${SCRIPT_DIR}/docker-compose.yml" config >/dev/null; then
     ok "docker-compose.yml valid (config check)"
   else
-    fail "docker-compose.yml invalid — run: docker compose config" >&2; exit 1
+    fail "docker-compose.yml invalid — see error above (run: docker compose -f ${SCRIPT_DIR}/docker-compose.yml config)" >&2; exit 1
   fi
   if command -v promtool >/dev/null 2>&1; then
     promtool check config "${SCRIPT_DIR}/prometheus.yml" >/dev/null && ok "prometheus.yml valid (promtool)" || { fail "prometheus.yml invalid"; exit 1; }
@@ -232,10 +236,14 @@ else
   ok "docker compose plugin available in target"
 fi
 
-if docker compose -f "${SCRIPT_DIR}/docker-compose.yml" config >/dev/null 2>&1; then
+if ! command -v docker >/dev/null 2>&1; then
+  warn "docker not found locally — skipping local compose check (target check runs below)"
+elif ! docker compose version >/dev/null 2>&1; then
+  warn "docker compose plugin not found locally — skipping local compose check (target check runs below)"
+elif docker compose -f "${SCRIPT_DIR}/docker-compose.yml" config >/dev/null; then
   ok "docker-compose.yml valid (local config check)"
 else
-  fail "docker-compose.yml invalid" >&2; exit 1
+  fail "docker-compose.yml invalid locally — see error above" >&2; exit 1
 fi
 
 # --- nuke mode ---
