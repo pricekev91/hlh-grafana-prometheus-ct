@@ -395,7 +395,7 @@ info "Container status:"
 lxc_exec "docker ps --filter name=prometheus --filter name=grafana --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'"
 
 info "Grafana macvlan IP:"
-GRAFANA_IP="$(lxc_exec "docker inspect -f '{{with index .NetworkSettings.Networks \"${MACVLAN_NAME}\"}}{{.IPAddress}}{{end}}' grafana 2>/dev/null" | tr -d '\r' | xargs || true)"
+GRAFANA_IP="$(lxc_exec "docker inspect -f '{{with index .NetworkSettings.Networks \"${EFFECTIVE_MACVLAN}\"}}{{.IPAddress}}{{end}}' grafana 2>/dev/null" | tr -d '\r' | xargs || true)"
 if [[ "$GRAFANA_IP" == "$MONITOR_IP" ]]; then
   ok "grafana IP ${GRAFANA_IP} == ${MONITOR_IP}"
 else
@@ -404,7 +404,7 @@ else
 fi
 
 info "Networks:"
-lxc_exec "docker network inspect ${MACVLAN_NAME} 2>&1 | head -40 || true"
+lxc_exec "docker network inspect ${EFFECTIVE_MACVLAN} 2>&1 | head -40 || true"
 
 info "Prometheus health..."
 for i in 1 2 3 4 5; do
@@ -422,9 +422,17 @@ done
 info "Prometheus targets:"
 lxc_exec "docker exec prometheus wget -qO- http://localhost:9090/api/v1/targets 2>/dev/null | head -c 2000 || echo 'targets not yet ready'"
 
+# macvlan parent interface (LXC eth0) cannot reach its own macvlan children, so
+# in pct mode the LAN-side check from prox01 is authoritative.
+grafana_healthy() {
+  if [[ $HAS_PCT -eq 1 && $IN_LXC -eq 0 ]] && command -v curl >/dev/null 2>&1; then
+    if curl -sf -m 5 "http://${MONITOR_IP}:3000/api/health" 2>/dev/null | grep -q ok; then return 0; fi
+  fi
+  lxc_exec "curl -sf http://${MONITOR_IP}:3000/api/health 2>/dev/null | grep -q ok || curl -sf http://localhost:3000/api/health 2>/dev/null | grep -q ok || wget -qO- http://${MONITOR_IP}:3000/api/health 2>/dev/null | grep -q ok"
+}
 info "Grafana health (macvlan)..."
 for i in 1 2 3 4 5 6; do
-  if lxc_exec "curl -sf http://${MONITOR_IP}:3000/api/health 2>/dev/null | grep -q ok || curl -sf http://localhost:3000/api/health 2>/dev/null | grep -q ok || wget -qO- http://${MONITOR_IP}:3000/api/health 2>/dev/null | grep -q ok"; then
+  if grafana_healthy; then
     ok "Grafana healthy at http://${MONITOR_IP}:3000"
     break
   fi
@@ -445,7 +453,7 @@ lxc_exec "ls -lh '${DATA_DIR}/prometheus_data' 2>&1 | head -5; ls -lh '${DATA_DI
 section "Deploy summary"
 printf "  %-22s %s\n" "Host LXC:" "${LXC_VMID} hlh-docker ${LXC_IP}"
 printf "  %-22s %s\n" "Context:" "$([[ $IN_LXC -eq 1 ]] && echo "inside hlh-docker (direct)" || echo "prox01 via pct")"
-printf "  %-22s %s\n" "Service IP (macvlan):" "${MONITOR_IP} (${MACVLAN_NAME} parent ${MACVLAN_PARENT})"
+printf "  %-22s %s\n" "Service IP (macvlan):" "${MONITOR_IP} (${EFFECTIVE_MACVLAN} parent ${MACVLAN_PARENT})"
 printf "  %-22s %s\n" "Grafana:" "http://${MONITOR_IP}:3000 (admin via .env or admin/admin)"
 printf "  %-22s %s\n" "Prometheus:" "http://prometheus:9090 internal"
 printf "  %-22s %s\n" "Data (ZFS mp0):" "${DATA_DIR}"
