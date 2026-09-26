@@ -2,7 +2,7 @@
 # ============================================================================
 # hlh-grafana-prometheus-ct — Deploy Prometheus + Grafana to hlh-docker
 # ============================================================================
-# Target: hlh-docker LXC 111 (192.168.1.11) → macvlan dedicated IP 192.168.1.14
+# Target: hlh-docker LXC 111 (192.168.1.9) → macvlan dedicated IP 192.168.1.14
 #   Grafana  http://192.168.1.14:3000  (macvlan, dedicated IP per user request)
 #   Prometheus internal http://prometheus:9090 (Grafana datasource)
 # Storage: /srv/data/grafana-prometheus on host ZFS RaidZ1-6TB/hlh-docker-data (mp0)
@@ -24,7 +24,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 LXC_VMID="${HLH_LXC_VMID:-111}"
-LXC_IP="${HLH_LXC_IP:-192.168.1.11}"
+LXC_IP="${HLH_LXC_IP:-192.168.1.9}"
 MONITOR_IP="${MONITOR_IP:-192.168.1.14}"
 MACVLAN_NAME="${MACVLAN_NAME:-macvlan}"
 MACVLAN_PARENT="${MACVLAN_PARENT:-eth0}"

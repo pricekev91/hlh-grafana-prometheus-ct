@@ -1,5 +1,5 @@
 # Stage 1 — hlh-grafana-prometheus-ct
-# Target: hlh-docker LXC 111 (192.168.1.11) → macvlan dedicated IP 192.168.1.14
+# Target: hlh-docker LXC 111 (192.168.1.9) → macvlan dedicated IP 192.168.1.14
 # Grafana  http://192.168.1.14:3000  (macvlan dedicated IP per user request)
 # Prometheus http://prometheus:9090 internal (via internal bridge); external UI optional via Grafana or extra macvlan IP
 # Storage: /srv/data/grafana-prometheus on host ZFS RaidZ1-6TB/hlh-docker-data (mp0) — see hlh-docker/deploy-hlh-docker.sh:281
@@ -18,10 +18,10 @@ services:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
     ports:
-      - "192.168.1.11:9090:9090"
+      - "192.168.1.9:9090:9090"
     networks:
       - internal
-    # Prometheus is reachable at http://192.168.1.11:9090 (hlh-docker host IP) for external UI,
+    # Prometheus is reachable at http://192.168.1.9:9090 (hlh-docker host IP) for external UI,
     # and at http://prometheus:9090 internally from Grafana via internal bridge.
     # To use a dedicated macvlan IP instead, add: networks: { internal, macvlan: { ipv4_address: 192.168.1.15 } }
 
@@ -38,7 +38,7 @@ services:
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
     ports:
-      - "192.168.1.11:9100:9100"
+      - "192.168.1.9:9100:9100"
     networks:
       - internal
 

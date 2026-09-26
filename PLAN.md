@@ -1,7 +1,7 @@
-# PLAN — Stage 1: hlh-grafana-prometheus-ct → hlh-docker (192.168.1.11)
+# PLAN — Stage 1: hlh-grafana-prometheus-ct → hlh-docker (192.168.1.9)
 
 **Date:** 2026-09-21 (Stage 1 built, gated for deploy on prox01)
-**Host:** `hlh-docker` LXC 111 `192.168.1.11/24` on `prox01` (`hlh-docker/deploy-hlh-docker.sh:44`)
+**Host:** `hlh-docker` LXC 111 `192.168.1.9/24` on `prox01` (`hlh-docker/deploy-hlh-docker.sh:44`)
 **Service IP (macvlan, dedicated):** `192.168.1.14` — Grafana `http://192.168.1.14:3000` (user request)
 **Constraint:** Ignore other CTs, pure macvlan dedicated IP, no host-bridge port remapping.
 **Status:** Stage 0 plan + Stage 1 build complete. `--plan` validates on laptop, `--apply` runs on prox01 via `pct exec 111`.
@@ -10,7 +10,7 @@
 
 * `hlh-docker` pure-bash, no Terraform/Ansible `hlh-docker/README.md:2`. Provisions unprivileged LXC 111 `hlh-docker/deploy-hlh-docker.sh:317` with `nesting=1,keyctl=1`, `4c/4096MB/32GB` on `RaidZ1-6TB` `hlh-docker/deploy-hlh-docker.sh:322`.
 * Single ZFS dataset `RaidZ1-6TB/hlh-docker-data` (30G) `hlh-docker/deploy-hlh-docker.sh:281` → `mount -t zfs ... /srv/data` `hlh-docker/deploy-hlh-docker.sh:293` and `mp0:/srv/data,mp=/srv/data` `hlh-docker/deploy-hlh-docker.sh:429`. Subdirs `/srv/data/docker` (`daemon.json: data-root` `hlh-docker/deploy-hlh-docker.sh:565`) + `/srv/data/dockhand` `hlh-docker/deploy-hlh-docker.sh:460`.
-* Dockhand `fnsys/dockhand:latest` on `80:3000` `hlh-docker/deploy-hlh-docker.sh:590` stays on `192.168.1.11` only. Macvlan `.14` has **zero conflict** — Grafana keeps native `3000` on its own IP.
+* Dockhand `fnsys/dockhand:latest` on `80:3000` `hlh-docker/deploy-hlh-docker.sh:590` stays on `192.168.1.9` only. Macvlan `.14` has **zero conflict** — Grafana keeps native `3000` on its own IP.
 * `hlh-grafana-prometheus-ct` now has Stage 1 artifacts (compose, prometheus.yml, provisioning, deploy script). `readme.md:1` describes vLLM (`/metrics`) + llama.cpp (`--metrics`) → Prometheus → Grafana `readme.md:22`.
 
 ## 2. Target Architecture
@@ -20,7 +20,7 @@
  Engine LXC 113 (vLLM       192.168.1.13:8000 /metrics)
                          │
                          ▼
-          hlh-docker LXC 111 (192.168.1.11) ── macvlan ──► 192.168.1.14
+          hlh-docker LXC 111 (192.168.1.9) ── macvlan ──► 192.168.1.14
                             /srv/data (mp0)
                               └─ /srv/data/grafana-prometheus/{prometheus_data,grafana_data}
                                    internal bridge: prometheus (9090) ──► grafana (3000 macvlan)
@@ -40,7 +40,7 @@
 | Grafana | `http://192.168.1.14:3000` + `/api/health` (admin/admin default, change via `.env`) |
 | Prometheus | `http://prometheus:9090` internal (Grafana datasource); external optional |
 | Prometheus API (internal) | `docker exec prometheus wget -qO- http://localhost:9090/api/v1/targets` should show 2 UP |
-| hlh-docker host | `http://192.168.1.11:80` Dockhand untouched |
+| hlh-docker host | `http://192.168.1.9:80` Dockhand untouched |
 | Data on host | `/srv/data/grafana-prometheus/prometheus_data` + `/grafana_data` (ZFS, `472:472` for grafana) |
 | Data in containers | `/prometheus` + `/var/lib/grafana` |
 
