@@ -70,9 +70,20 @@ Exact metric names differ slightly between the two engines; the dashboards (or a
 
 ## Dashboards
 
-- Official / community vLLM Grafana dashboards can be imported directly.
-- Community llama.cpp dashboards exist and can be adapted.
-- A combined multi-engine dashboard is recommended: rows or variables filtered by engine so both services appear side-by-side.
+The llama.cpp dashboards are generated, not hand-edited:
+
+- `grafana/dashboards/generate_dashboards.py` — single source of truth for the
+  `hlh-llama.cpp-egpu` (v100 / Qwen3.8-27B) and `hlh-llama.cpp-igpu`
+  (Qwen3.6-35B-A3B) dashboards. It parameterizes the DGX Spark layout + NVIDIA
+  theme per engine: instance label, cloud-pricing tier, and power draw
+  (duty-weighted busy/idle watts). Edit the `PROFILES` dict there, re-run the
+  script, and re-copy the JSONs into the CT — do not hand-edit the JSON.
+- `hlh-llama.cpp-egpu.json` / `hlh-llama.cpp-igpu.json` — generated output.
+  Provisioned automatically by Grafana (file provider, 10 s interval).
+- `hlh-vllm-igpu.json` — vLLM dashboard.
+
+To update pricing or power figures after measuring with a Kill-A-Watt, change
+the `power` / `pricing` values in `generate_dashboards.py` and regenerate.
 
 ## License
 
