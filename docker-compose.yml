@@ -8,7 +8,8 @@
 #          driver does not support port mappings — hence the nginx sidecar on the
 #          internal bridge.)
 # Prometheus http://prometheus:9090 internal (via internal bridge); external UI optional via Grafana or extra macvlan IP
-# Storage: /srv/data/grafana-prometheus on host ZFS RaidZ1-6TB/hlh-docker-data (mp0) — see hlh-docker/deploy-hlh-docker.sh:281
+# Storage: /vault/grafana on host ZFS RaidZ1-6TB/vault (mp1) — vault dataset, survives LXC rebuilds
+#          (2026-10-07: migrated from /srv/data/grafana-prometheus [RaidZ1-6TB/hlh-docker-data, 30G cap])
 services:
   prometheus:
     image: prom/prometheus:v3.5.0
@@ -95,13 +96,13 @@ volumes:
     driver_opts:
       type: none
       o: bind
-      device: /srv/data/grafana-prometheus/prometheus_data
+      device: /vault/grafana/prometheus_data
   grafana_data:
     driver: local
     driver_opts:
       type: none
       o: bind
-      device: /srv/data/grafana-prometheus/grafana_data
+      device: /vault/grafana/grafana_data
 
 networks:
   internal:

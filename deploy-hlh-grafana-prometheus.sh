@@ -5,11 +5,11 @@
 # Target: hlh-docker LXC 109 (192.168.1.9) → macvlan dedicated IP 192.168.1.14
 #   Grafana  http://192.168.1.14  (port 80, macvlan, dedicated IP per user request)
 #   Prometheus internal http://prometheus:9090 (Grafana datasource)
-# Storage: /srv/data/grafana-prometheus on host ZFS RaidZ1-6TB/hlh-docker-data (mp0)
+# Storage: /vault/grafana on host ZFS RaidZ1-6TB/vault (mp1) — vault dataset, survives LXC rebuilds
 #
 # Runs in two modes:
 #   1. Inside hlh-docker (recommended): run directly on LXC 109 (root@hlh-docker)
-#      — uses docker directly, DATA_DIR=/srv/data/grafana-prometheus
+#      — uses docker directly, DATA_DIR=/vault/grafana
 #   2. On prox01: via pct exec 109 (requires pct)
 #
 # Usage (inside hlh-docker):
@@ -31,7 +31,7 @@ MACVLAN_NAME="${MACVLAN_NAME:-macvlan}"
 MACVLAN_PARENT="${MACVLAN_PARENT:-eth0}"
 MACVLAN_SUBNET="${MACVLAN_SUBNET:-192.168.1.0/24}"
 MACVLAN_GATEWAY="${MACVLAN_GATEWAY:-192.168.1.1}"
-DATA_DIR="/srv/data/grafana-prometheus"
+DATA_DIR="/vault/grafana"
 PROM_RETENTION="${PROM_RETENTION:-15d}"
 
 MODE="plan"
@@ -74,7 +74,7 @@ Env:
 
 Grafana:  http://${MONITOR_IP}:${GRAFANA_PORT}
 Prometheus (internal): http://prometheus:9090
-Data:     ${DATA_DIR}/prometheus_data + ${DATA_DIR}/grafana_data (ZFS bind via mp0)
+Data:     ${DATA_DIR}/prometheus_data + ${DATA_DIR}/grafana_data (ZFS vault via mp1)
 USAGE
 }
 
@@ -140,7 +140,7 @@ docker_compose_cmd() {
 # --- plan mode (works anywhere — no pct/docker daemon required except config check) ---
 if [[ "$MODE" == "plan" ]]; then
   section "Plan (what would be done)"
-  for req in docker-compose.yml prometheus.yml grafana/provisioning/datasources/datasource.yml grafana/provisioning/dashboards/dashboards.yml; do
+  for req in docker-compose.yml grafana-proxy.conf prometheus.yml grafana/provisioning/datasources/datasource.yml grafana/provisioning/dashboards/dashboards.yml; do
     if [[ ! -f "${SCRIPT_DIR}/${req}" ]]; then fail "Missing ${req} in ${SCRIPT_DIR}" >&2; exit 1; fi
   done
   if ! command -v docker >/dev/null 2>&1; then
@@ -186,7 +186,7 @@ if [[ "$MODE" == "plan" ]]; then
   printf "  %-22s %s\n" "Prometheus:" "http://prometheus:9090 internal"
   printf "  %-22s %s\n" "Scrape targets:" "vllm 192.168.1.13:8000, llamacpp 192.168.1.12:80 + 192.168.1.11:80 (epu)"
   printf "  %-22s %s\n" "Retention:" "${PROM_RETENTION}"
-  printf "  %-22s %s\n" "Data (ZFS mp0):" "${DATA_DIR}"
+  printf "  %-22s %s\n" "Data (ZFS vault):" "${DATA_DIR}"
   info "Plan complete — no changes made. Run with --apply to deploy."
   info "Inside hlh-docker: ./deploy-hlh-grafana-prometheus.sh --apply"
   exit 0
@@ -220,7 +220,18 @@ if ! lxc_exec "command -v docker >/dev/null 2>&1"; then
 fi
 ok "docker found"
 
-for req in docker-compose.yml prometheus.yml grafana/provisioning/datasources/datasource.yml grafana/provisioning/dashboards/dashboards.yml; do
+# /srv/data must be on the ZFS data dataset. (2026-09-28 incident: a manual
+# `mount` of the dataset does not survive host reboots — /srv/data silently
+# reverted to a plain rpool directory and all docker state landed on the
+# 108G NVMe boot pool. Full rpool = host won't boot.)
+DATA_SRC=$(lxc_exec "df --output=source /srv/data 2>/dev/null | tail -1")
+if [[ "$DATA_SRC" != *hlh-docker-data* ]]; then
+  fail "/srv/data source is '${DATA_SRC}' (expected *hlh-docker-data*).\n  Fix on prox01: zfs set mountpoint=/srv/data RaidZ1-6TB/hlh-docker-data\n  Refusing to deploy onto rpool." >&2
+  exit 1
+fi
+ok "/srv/data is on ZFS: ${DATA_SRC}"
+
+for req in docker-compose.yml grafana-proxy.conf prometheus.yml grafana/provisioning/datasources/datasource.yml grafana/provisioning/dashboards/dashboards.yml; do
   if [[ ! -f "${SCRIPT_DIR}/${req}" ]]; then fail "Missing ${req} in ${SCRIPT_DIR}" >&2; exit 1; fi
 done
 ok "local compose + configs present"
@@ -302,7 +313,8 @@ fi
 section "Copying stack files to ${DATA_DIR}"
 
 push_file "${SCRIPT_DIR}/docker-compose.yml" "${DATA_DIR}/docker-compose.yml"
-ok "copied docker-compose.yml"
+push_file "${SCRIPT_DIR}/grafana-proxy.conf" "${DATA_DIR}/grafana-proxy.conf"
+ok "copied docker-compose.yml + grafana-proxy.conf"
 
 if [[ "$PROM_RETENTION" != "15d" ]]; then
   info "Overriding retention to ${PROM_RETENTION}"
@@ -462,7 +474,7 @@ printf "  %-22s %s\n" "Context:" "$([[ $IN_LXC -eq 1 ]] && echo "inside hlh-dock
 printf "  %-22s %s\n" "Service IP (macvlan):" "${MONITOR_IP} (${EFFECTIVE_MACVLAN} parent ${MACVLAN_PARENT})"
 printf "  %-22s %s\n" "Grafana:" "http://${MONITOR_IP}:${GRAFANA_PORT} (admin via .env or admin/admin)"
 printf "  %-22s %s\n" "Prometheus:" "http://prometheus:9090 internal"
-printf "  %-22s %s\n" "Data (ZFS mp0):" "${DATA_DIR}"
+printf "  %-22s %s\n" "Data (ZFS vault):" "${DATA_DIR}"
 printf "  %-22s %s\n" "Scrape:" "vllm 192.168.1.13:8000, llamacpp 192.168.1.12:80 + 192.168.1.11:80 epu (15s)"
 printf "  %-22s %s\n" "Retention:" "${PROM_RETENTION}"
 echo ""
