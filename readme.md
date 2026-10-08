@@ -44,10 +44,19 @@ Both engines expose native Prometheus metrics. Prometheus scrapes them on a shor
    docker compose up -d
    ```
 
-4. Open Grafana at `http://localhost:3000` (default credentials: `admin` / `admin`).
-5. Import the provided dashboards (or create your own panels filtered by `job` / engine label).
+4. Open Grafana at `http://192.168.1.9:3000` — the nginx `grafana-proxy` sidecar is the
+   canonical URL (works from LAN, VPN, and inside the LXC). Default credentials
+   `admin` / `admin`; set `GF_SECURITY_ADMIN_PASSWORD` in `.env` for a fresh deploy.
+5. Dashboards are auto-provisioned from `grafana/dashboards/` (llama.cpp + unified;
+   the vLLM dashboards were removed 2026-10-08 when the vLLM engine was retired).
 
-Prometheus will be available at `http://localhost:9090`.
+Prometheus UI will be available at `http://192.168.1.9:9090` (internal:
+`http://prometheus:9090`, the provisioned Grafana datasource).
+
+> Note (2026-10-08): the original design put Grafana on a dedicated macvlan IP
+> (192.168.1.14). On top of the LXC's veth that IP is unreachable from inside
+> the LXC (macvlan-on-veth can't hairpin ARP) and from the VPN endpoint, so it
+> was removed — the bridge-side proxy is now the only external path.
 
 ## Configuration Notes
 

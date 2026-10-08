@@ -1,15 +1,16 @@
 # Stage 1 — hlh-grafana-prometheus-ct
-# Target: hlh-docker LXC 109 (192.168.1.9) → macvlan dedicated IP 192.168.1.14
-# Grafana  http://192.168.1.14  (port 80, macvlan dedicated IP per user request)
-#          http://192.168.1.9:3000 (grafana-proxy sidecar; 2026-10-01: the .14 macvlan is
-#          unreachable from inside the LXC — macvlan-on-veth can't hairpin ARP —
-#          and the VPN endpoint 192.168.2.1 drops packets to .14 while .9 works.
-#          NOTE: `ports:` on the grafana service itself is IGNORED because the macvlan
-#          driver does not support port mappings — hence the nginx sidecar on the
-#          internal bridge.)
-# Prometheus http://prometheus:9090 internal (via internal bridge); external UI optional via Grafana or extra macvlan IP
-# Storage: /vault/grafana on host ZFS RaidZ1-6TB/vault (mp1) — vault dataset, survives LXC rebuilds
-#          (2026-10-07: migrated from /srv/data/grafana-prometheus [RaidZ1-6TB/hlh-docker-data, 30G cap])
+# Target: hlh-docker LXC 109 (192.168.1.9)
+# Grafana  http://192.168.1.9:3000 (grafana-proxy nginx sidecar — CANONICAL URL)
+#   Works from LAN, VPN, and inside the LXC.
+#   2026-10-08: removed the 192.168.1.14 macvlan. On top of the LXC veth it was
+#   unreachable from inside the LXC (macvlan-on-veth can't hairpin ARP) and from
+#   the VPN endpoint, so the "dedicated IP" only worked from some LAN clients
+#   while tooling + VPN saw a dead page. Grafana now stays on the internal
+#   bridge (port 3000); the proxy is the sole external path.
+# Prometheus http://prometheus:9090 internal (Grafana datasource)
+#          http://192.168.1.9:9090 external UI
+# Storage: /vault/grafana on host ZFS RaidZ1-6TB/vault (mp1) — vault dataset,
+#          survives LXC rebuilds
 services:
   prometheus:
     image: prom/prometheus:v3.5.0
@@ -28,9 +29,8 @@ services:
       - "192.168.1.9:9090:9090"
     networks:
       - internal
-    # Prometheus is reachable at http://192.168.1.9:9090 (hlh-docker host IP) for external UI,
-    # and at http://prometheus:9090 internally from Grafana via internal bridge.
-    # To use a dedicated macvlan IP instead, add: networks: { internal, macvlan: { ipv4_address: 192.168.1.15 } }
+    # Prometheus UI at http://192.168.1.9:9090 for external debugging,
+    # and at http://prometheus:9090 internally from Grafana via the bridge.
 
   node-exporter:
     image: prom/node-exporter:v1.8.2
@@ -53,17 +53,12 @@ services:
     image: grafana/grafana:11.5.2
     container_name: grafana
     restart: unless-stopped
-    # Serve on port 80 so Grafana is reachable at http://192.168.1.14 (no port suffix).
-    # Container process runs as uid 472 (grafana) — NET_BIND_SERVICE needed for port 80.
-    cap_add:
-      - NET_BIND_SERVICE
-    # NOTE: no `ports:` here — the macvlan driver ignores port mappings.
-    # External access goes through the grafana-proxy sidecar (see below).
+    # Internal only — external access goes through grafana-proxy (nginx) on
+    # http://192.168.1.9:3000. No macvlan (see header note).
     environment:
       - GF_SECURITY_ADMIN_USER=${GF_SECURITY_ADMIN_USER:-admin}
       - GF_SECURITY_ADMIN_PASSWORD=${GF_SECURITY_ADMIN_PASSWORD:-admin}
       - GF_USERS_ALLOW_SIGN_UP=false
-      - GF_SERVER_HTTP_PORT=${GRAFANA_PORT:-80}
     volumes:
       - grafana_data:/var/lib/grafana
       - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
@@ -72,15 +67,13 @@ services:
     depends_on:
       - prometheus
     networks:
-      internal:
-      macvlan:
-        ipv4_address: 192.168.1.14
+      - internal
 
   grafana-proxy:
     image: nginx:alpine
     container_name: grafana-proxy
     restart: unless-stopped
-    # Host-published via the bridge network (macvlan can't do it): http://192.168.1.9:3000
+    # Canonical external URL: http://192.168.1.9:3000 (LAN + VPN + inside LXC)
     ports:
       - "192.168.1.9:3000:80"
     volumes:
@@ -107,6 +100,3 @@ volumes:
 networks:
   internal:
     driver: bridge
-  macvlan:
-    external: true
-    name: ${MACVLAN_NAME:-macvlan}

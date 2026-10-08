@@ -2,22 +2,29 @@
 # ============================================================================
 # hlh-grafana-prometheus-ct — Deploy Prometheus + Grafana to hlh-docker
 # ============================================================================
-# Target: hlh-docker LXC 109 (192.168.1.9) → macvlan dedicated IP 192.168.1.14
-#   Grafana  http://192.168.1.14  (port 80, macvlan, dedicated IP per user request)
-#   Prometheus internal http://prometheus:9090 (Grafana datasource)
-# Storage: /vault/grafana on host ZFS RaidZ1-6TB/vault (mp1) — vault dataset, survives LXC rebuilds
+# Target: hlh-docker LXC 109 (192.168.1.9)
+#   Grafana      http://192.168.1.9:3000  (nginx grafana-proxy — CANONICAL URL;
+#                works from LAN, VPN, and inside the LXC)
+#   Prometheus   http://192.168.1.9:9090 (external UI)
+#                http://prometheus:9090  (internal, Grafana datasource)
+#   2026-10-08: removed the 192.168.1.14 macvlan — on top of the LXC veth it
+#   was unreachable from inside the LXC (ARP hairpin) and from the VPN
+#   endpoint, so the "dedicated IP" only worked from some LAN clients while
+#   tooling + VPN saw a dead page. The proxy is now the sole external path.
+#   vLLM (192.168.1.13) decommissioned — no longer scraped.
+# Storage: /vault/grafana on host ZFS RaidZ1-6TB/vault (mp1) — vault dataset,
+#          survives LXC rebuilds
 #
 # Runs in two modes:
 #   1. Inside hlh-docker (recommended): run directly on LXC 109 (root@hlh-docker)
-#      — uses docker directly, DATA_DIR=/vault/grafana
-#   2. On prox01: via pct exec 109 (requires pct)
+#   2. On prox01: via pct exec 109
 #
-# Usage (inside hlh-docker):
+# Usage:
 #   ./deploy-hlh-grafana-prometheus.sh --plan    # dry-run
 #   ./deploy-hlh-grafana-prometheus.sh --apply   # deploy
 #   ./deploy-hlh-grafana-prometheus.sh --nuke    # down -v + rm data + redeploy
 #
-# Env overrides: MONITOR_IP=192.168.1.14, PROM_RETENTION=15d, MACVLAN_* etc.
+# Env overrides: PROM_RETENTION=15d, HLH_LXC_VMID=109, HLH_LXC_IP=192.168.1.9
 # ============================================================================
 set -euo pipefail
 
@@ -25,12 +32,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 LXC_VMID="${HLH_LXC_VMID:-109}"
 LXC_IP="${HLH_LXC_IP:-192.168.1.9}"
-MONITOR_IP="${MONITOR_IP:-192.168.1.14}"
-GRAFANA_PORT="${GRAFANA_PORT:-80}"
-MACVLAN_NAME="${MACVLAN_NAME:-macvlan}"
-MACVLAN_PARENT="${MACVLAN_PARENT:-eth0}"
-MACVLAN_SUBNET="${MACVLAN_SUBNET:-192.168.1.0/24}"
-MACVLAN_GATEWAY="${MACVLAN_GATEWAY:-192.168.1.1}"
+GRAFANA_PORT="${GRAFANA_PORT:-3000}"
+GRAFANA_URL="http://${LXC_IP}:${GRAFANA_PORT}"
 DATA_DIR="/vault/grafana"
 PROM_RETENTION="${PROM_RETENTION:-15d}"
 
@@ -57,7 +60,7 @@ Usage: $0 [options]
 Run inside hlh-docker (recommended) or on prox01 via pct:
 
   --plan          Dry-run (default) — validates compose, shows what would be done
-  --apply         Deploy stack (creates macvlan, copies configs, docker compose up -d)
+  --apply         Deploy stack (copies configs, docker compose up -d)
   --nuke          Down stack, remove volumes + data, then redeploy
   -h, --help      Show this help
 
@@ -67,14 +70,14 @@ Examples:
   ./deploy-hlh-grafana-prometheus.sh --apply
 
   # on prox01:
-  pct push 109 deploy-hlh-grafana-prometheus.sh /root/deploy.sh && pct exec 109 -- bash /root/deploy.sh --apply
+  bash deploy-hlh-grafana-prometheus.sh --apply
 
 Env:
-  MONITOR_IP=${MONITOR_IP}  MACVLAN_NAME=${MACVLAN_NAME}  PROM_RETENTION=${PROM_RETENTION}
+  PROM_RETENTION=${PROM_RETENTION}
 
-Grafana:  http://${MONITOR_IP}:${GRAFANA_PORT}
-Prometheus (internal): http://prometheus:9090
-Data:     ${DATA_DIR}/prometheus_data + ${DATA_DIR}/grafana_data (ZFS vault via mp1)
+Grafana:      ${GRAFANA_URL}  (nginx proxy — works from LAN, VPN, inside LXC)
+Prometheus:   http://${LXC_IP}:9090 (UI) / http://prometheus:9090 (internal)
+Data:         ${DATA_DIR}/prometheus_data + ${DATA_DIR}/grafana_data (ZFS vault via mp1)
 USAGE
 }
 
@@ -92,10 +95,8 @@ done
 # --- detect execution context ---
 HAS_PCT=0; IN_LXC=0
 if command -v pct >/dev/null 2>&1; then HAS_PCT=1; fi
-# Inside hlh-docker: hostname is hlh-docker, or pct missing but docker present and /srv/data exists
 if [[ "$(hostname 2>/dev/null)" == "hlh-docker" ]]; then IN_LXC=1; fi
 if [[ $HAS_PCT -eq 0 ]] && command -v docker >/dev/null 2>&1 && [[ -d "/srv/data" ]]; then IN_LXC=1; fi
-# If no explicit mode and no pct, assume direct LXC execution for --apply pre-flight later
 
 # --- helpers: abstract pct vs direct ---
 lxc_exec() {
@@ -119,21 +120,6 @@ push_file() {
     mkdir -p "$(dirname "$dst")"
     cp -f "$src" "$dst"
     chmod 0644 "$dst"
-  fi
-}
-docker_cmd() {
-  # run docker command in target context
-  if [[ $HAS_PCT -eq 1 ]] && [[ $IN_LXC -eq 0 ]]; then
-    pct exec "$LXC_VMID" -- bash -lc "docker $*"
-  else
-    docker "$@"
-  fi
-}
-docker_compose_cmd() {
-  if [[ $HAS_PCT -eq 1 ]] && [[ $IN_LXC -eq 0 ]]; then
-    pct exec "$LXC_VMID" -- bash -lc "cd '${DATA_DIR}' && docker compose $*"
-  else
-    (cd "${DATA_DIR}" && docker compose "$@")
   fi
 }
 
@@ -167,24 +153,23 @@ if [[ "$MODE" == "plan" ]]; then
   info "Would ensure data dirs:"
   info "  ${DATA_DIR}/prometheus_data (0755)"
   info "  ${DATA_DIR}/grafana_data (0755, chown 472:472 for grafana UID)"
-  info "Would ensure macvlan network:"
-  info "  docker network inspect ${MACVLAN_NAME} || docker network create -d macvlan --subnet ${MACVLAN_SUBNET} --gateway ${MACVLAN_GATEWAY} -o parent=${MACVLAN_PARENT} ${MACVLAN_NAME}"
   info "Would copy into ${DATA_DIR}:"
-  info "  docker-compose.yml, prometheus.yml, grafana/provisioning/*, grafana/dashboards/*, .env (if present)"
+  info "  docker-compose.yml, grafana-proxy.conf, prometheus.yml,"
+  info "  grafana/provisioning/*, grafana/dashboards/* (stale .json removed first), .env (if present)"
   info "Would deploy:"
   info "  cd ${DATA_DIR} && docker compose down --remove-orphans && docker compose pull && docker compose up -d"
   info "Would verify:"
   info "  docker ps --filter name=prometheus/grafana"
-  info "  docker inspect grafana → IP ${MONITOR_IP} on ${MACVLAN_NAME}"
-  info "  curl -sf http://${MONITOR_IP}:${GRAFANA_PORT}/api/health (Grafana)"
+  info "  curl -sf ${GRAFANA_URL}/api/health from inside the LXC (proxy path)"
+  info "  + from this host in pct mode (LAN side)"
   info "  docker exec prometheus wget -qO- http://localhost:9090/-/healthy (Prometheus)"
+  info "  /api/v1/targets — all scrape targets must be up (fail otherwise)"
   printf "\n"
   printf "  %-22s %s\n" "Host LXC:" "${LXC_VMID} hlh-docker ${LXC_IP}"
   printf "  %-22s %s\n" "Context:" "$([[ $IN_LXC -eq 1 ]] && echo "inside hlh-docker (direct)" || ([[ $HAS_PCT -eq 1 ]] && echo "prox01 via pct" || echo "laptop"))"
-  printf "  %-22s %s\n" "Service IP (macvlan):" "${MONITOR_IP} (${MACVLAN_NAME} parent ${MACVLAN_PARENT})"
-  printf "  %-22s %s\n" "Grafana:" "http://${MONITOR_IP}:${GRAFANA_PORT}"
-  printf "  %-22s %s\n" "Prometheus:" "http://prometheus:9090 internal"
-  printf "  %-22s %s\n" "Scrape targets:" "vllm 192.168.1.13:8000, llamacpp 192.168.1.12:80 + 192.168.1.11:80 (epu)"
+  printf "  %-22s %s\n" "Grafana:" "${GRAFANA_URL} (nginx proxy — LAN + VPN + inside LXC)"
+  printf "  %-22s %s\n" "Prometheus:" "http://${LXC_IP}:9090 (UI) / http://prometheus:9090 (datasource)"
+  printf "  %-22s %s\n" "Scrape targets:" "llamacpp 192.168.1.12:80 + 192.168.1.11:80 (epu)"
   printf "  %-22s %s\n" "Retention:" "${PROM_RETENTION}"
   printf "  %-22s %s\n" "Data (ZFS vault):" "${DATA_DIR}"
   info "Plan complete — no changes made. Run with --apply to deploy."
@@ -273,42 +258,6 @@ lxc_exec "chmod 0755 '${DATA_DIR}' '${DATA_DIR}/prometheus_data' '${DATA_DIR}/gr
 lxc_exec "chown -R 472:472 '${DATA_DIR}/grafana_data' 2>/dev/null || chown -R 472 '${DATA_DIR}/grafana_data' 2>/dev/null || true"
 ok "data dirs ready: ${DATA_DIR}/prometheus_data + grafana_data (472:472)"
 
-# --- ensure macvlan network ---
-section "Macvlan network (${MACVLAN_NAME})"
-EFFECTIVE_MACVLAN="${MACVLAN_NAME}"
-if lxc_exec "docker network inspect '${MACVLAN_NAME}' >/dev/null 2>&1"; then
-  ok "macvlan network ${MACVLAN_NAME} already exists"
-  lxc_exec "docker network inspect '${MACVLAN_NAME}' | grep -q '${MACVLAN_SUBNET}' && echo 'subnet ok' || echo 'subnet differs (manual check)'"
-else
-  # Reuse an existing macvlan network already claiming this subnet (e.g. bench_lan).
-  # Docker refuses a second macvlan on the same pool: "Pool overlaps with other
-  # one on this address space". Reusing keeps Grafana on .14 without overlap.
-  OVERLAP="$(lxc_exec "docker network ls --filter driver=macvlan --format '{{.Name}}' 2>/dev/null | while read -r n; do if docker network inspect \"\$n\" 2>/dev/null | grep -q '${MACVLAN_SUBNET}'; then echo \"\$n\"; break; fi; done" | tr -d '\r' | xargs || true)"
-  if [[ -n "${OVERLAP:-}" ]]; then
-    warn "network ${MACVLAN_NAME} missing but existing macvlan '${OVERLAP}' already uses ${MACVLAN_SUBNET} — reusing it"
-    EFFECTIVE_MACVLAN="${OVERLAP}"
-    ok "macvlan network ${EFFECTIVE_MACVLAN} reused (subnet ${MACVLAN_SUBNET})"
-  else
-    info "Creating macvlan ${MACVLAN_NAME} parent=${MACVLAN_PARENT} subnet=${MACVLAN_SUBNET} gw=${MACVLAN_GATEWAY}"
-    if lxc_exec "docker network create -d macvlan --subnet '${MACVLAN_SUBNET}' --gateway '${MACVLAN_GATEWAY}' -o parent='${MACVLAN_PARENT}' '${MACVLAN_NAME}' >/dev/null"; then
-      ok "macvlan network created"
-    else
-      fail "Failed to create macvlan ${MACVLAN_NAME}. Check parent: ip link" >&2
-      lxc_exec "ip link; docker network ls; docker network inspect bench_lan 2>&1 | head -30 || true"
-      exit 1
-    fi
-  fi
-fi
-if [[ "${EFFECTIVE_MACVLAN}" != "${MACVLAN_NAME}" ]]; then
-  info "Effective macvlan network: ${EFFECTIVE_MACVLAN} (requested ${MACVLAN_NAME}) — compose will use it via MACVLAN_NAME"
-fi
-
-if lxc_exec "getent hosts ${MONITOR_IP} >/dev/null 2>&1 || ping -c1 -W2 ${MONITOR_IP} >/dev/null 2>&1"; then
-  warn "IP ${MONITOR_IP} appears responsive — will verify after deploy it belongs to grafana"
-else
-  ok "IP ${MONITOR_IP} appears free (pre-deploy ping failed as expected)"
-fi
-
 # --- push compose + configs ---
 section "Copying stack files to ${DATA_DIR}"
 
@@ -329,11 +278,14 @@ push_file "${SCRIPT_DIR}/grafana/provisioning/datasources/datasource.yml" "${DAT
 push_file "${SCRIPT_DIR}/grafana/provisioning/dashboards/dashboards.yml" "${DATA_DIR}/grafana/provisioning/dashboards/dashboards.yml"
 ok "copied grafana provisioning"
 
+# Dashboards dir is deploy-managed: remove stale JSON (e.g. retired vLLM
+# dashboards) so Grafana's file provisioner drops the matching dashboards.
+lxc_exec "rm -f '${DATA_DIR}/grafana/dashboards/'*.json 2>/dev/null || true"
 if compgen -G "${SCRIPT_DIR}/grafana/dashboards/*.json" >/dev/null 2>&1; then
   for f in "${SCRIPT_DIR}"/grafana/dashboards/*.json; do
     push_file "$f" "${DATA_DIR}/grafana/dashboards/$(basename "$f")"
   done
-  ok "copied grafana dashboards"
+  ok "copied grafana dashboards (stale .json removed first)"
 else
   info "no custom dashboards to push (import via Grafana UI after deploy)"
 fi
@@ -342,21 +294,8 @@ if [[ -f "${SCRIPT_DIR}/.env" ]]; then
   push_file "${SCRIPT_DIR}/.env" "${DATA_DIR}/.env"
   ok "copied .env"
 else
-  warn ".env not found locally — using defaults admin/admin (create .env from .env.example)"
-  if [[ -f "${SCRIPT_DIR}/.env.example" ]]; then
-    push_file "${SCRIPT_DIR}/.env.example" "${DATA_DIR}/.env.example"
-  fi
+  warn ".env not found locally — using defaults admin/admin (copy .env.example to .env and set GF_SECURITY_ADMIN_PASSWORD; only applies to a FRESH grafana_data)"
 fi
-
-# Compose resolves ${MACVLAN_NAME:-macvlan} and ${GRAFANA_PORT:-80} from the
-# project .env, so the target .env must pin the effective values.
-pin_env() {
-  local key="$1" val="$2"
-  lxc_exec "touch '${DATA_DIR}/.env' && (grep -q '^${key}=' '${DATA_DIR}/.env' && sed -i 's/^${key}=.*/${key}=${val}/' '${DATA_DIR}/.env' || echo '${key}=${val}' >> '${DATA_DIR}/.env') && grep '^${key}=' '${DATA_DIR}/.env'"
-}
-pin_env MACVLAN_NAME "${EFFECTIVE_MACVLAN}"
-pin_env GRAFANA_PORT "${GRAFANA_PORT}"
-ok "pinned MACVLAN_NAME=${EFFECTIVE_MACVLAN} + GRAFANA_PORT=${GRAFANA_PORT} in target .env"
 
 if lxc_exec "command -v promtool >/dev/null 2>&1"; then
   if lxc_exec "promtool check config '${DATA_DIR}/prometheus.yml' >/dev/null 2>&1"; then
@@ -412,18 +351,6 @@ section "Verification"
 info "Container status:"
 lxc_exec "docker ps --filter name=prometheus --filter name=grafana --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'"
 
-info "Grafana macvlan IP:"
-GRAFANA_IP="$(lxc_exec "docker inspect -f '{{with index .NetworkSettings.Networks \"${EFFECTIVE_MACVLAN}\"}}{{.IPAddress}}{{end}}' grafana 2>/dev/null" | tr -d '\r' | xargs || true)"
-if [[ "$GRAFANA_IP" == "$MONITOR_IP" ]]; then
-  ok "grafana IP ${GRAFANA_IP} == ${MONITOR_IP}"
-else
-  warn "grafana IP '${GRAFANA_IP}' expected '${MONITOR_IP}' — check parent/IP conflict"
-  lxc_exec "docker inspect grafana | grep -A2 IPAddress || true"
-fi
-
-info "Networks:"
-lxc_exec "docker network inspect ${EFFECTIVE_MACVLAN} 2>&1 | head -40 || true"
-
 info "Prometheus health..."
 for i in 1 2 3 4 5; do
   if lxc_exec "docker exec prometheus wget -qO- http://localhost:9090/-/healthy 2>/dev/null | grep -qi healthy"; then
@@ -437,32 +364,99 @@ for i in 1 2 3 4 5; do
   fi
 done
 
-info "Prometheus targets:"
-lxc_exec "docker exec prometheus wget -qO- http://localhost:9090/api/v1/targets 2>/dev/null | head -c 2000 || echo 'targets not yet ready'"
-
-# macvlan parent interface (LXC eth0) cannot reach its own macvlan children, so
-# in pct mode the LAN-side check from prox01 is authoritative.
-grafana_healthy() {
-  if [[ $HAS_PCT -eq 1 && $IN_LXC -eq 0 ]] && command -v curl >/dev/null 2>&1; then
-    if curl -sf -m 5 "http://${MONITOR_IP}:${GRAFANA_PORT}/api/health" 2>/dev/null | grep -q ok; then return 0; fi
-  fi
-  lxc_exec "curl -sf http://${MONITOR_IP}:${GRAFANA_PORT}/api/health 2>/dev/null | grep -q ok || curl -sf http://localhost:${GRAFANA_PORT}/api/health 2>/dev/null | grep -q ok || wget -qO- http://${MONITOR_IP}:${GRAFANA_PORT}/api/health 2>/dev/null | grep -q ok"
+# Parse target health locally (python3 on the script host). Prints one line
+# per active target; exits 0 only if at least one target exists and ALL are up.
+parse_targets() {
+  local json="$1"
+  python3 - "$json" <<'PYEOF'
+import json, sys
+try:
+    d = json.loads(sys.argv[1])
+except Exception as e:
+    sys.exit(2)
+ts = d["data"]["activeTargets"]
+for t in ts:
+    print("%-12s %-40s %-6s %s" % (
+        t["labels"].get("job", "?"),
+        t["scrapeUrl"],
+        t["health"],
+        t.get("lastError", "")[:70]))
+if not ts:
+    sys.exit(1)
+sys.exit(0 if all(t["health"] == "up" for t in ts) else 1)
+PYEOF
 }
-info "Grafana health (macvlan)..."
+
+info "Prometheus targets (all must be up)..."
+TARGETS_JSON=""
+TARGETS_OUT=""
+TARGETS_OK=0
+for i in $(seq 1 10); do
+  TARGETS_JSON="$(lxc_exec "docker exec prometheus wget -qO- http://localhost:9090/api/v1/targets 2>/dev/null" | tr -d '\r')"
+  if TARGETS_OUT="$(parse_targets "$TARGETS_JSON" 2>/dev/null)"; then
+    TARGETS_OK=1
+    break
+  fi
+  sleep 4
+done
+if [[ $TARGETS_OK -eq 1 ]]; then
+  info "Target health:"
+  printf '%s\n' "$TARGETS_OUT"
+  ok "all scrape targets up"
+else
+  fail "scrape targets not all up — dashboards will show no data for down targets" >&2
+  if [[ -n "$TARGETS_OUT" ]]; then
+    printf '%s\n' "$TARGETS_OUT" >&2
+  else
+    printf '%s\n' "${TARGETS_JSON:0:1500}" >&2
+  fi
+  info "Fix the engine (e.g. pct start <vmid>) or remove the job from prometheus.yml, then re-run --apply"
+  exit 1
+fi
+
+# Canonical URL check: through the proxy, from inside the LXC (docker-proxy on
+# .9:3000) and, in pct mode, from prox01 (LAN side). These are the paths users
+# actually use — NOT the macvlan IP, which no longer exists.
+grafana_healthy_in_lxc() {
+  lxc_exec "curl -sf -m 5 'http://${LXC_IP}:${GRAFANA_PORT}/api/health' 2>/dev/null | grep -q ok"
+}
+grafana_healthy_from_host() {
+  curl -sf -m 5 "http://${LXC_IP}:${GRAFANA_PORT}/api/health" 2>/dev/null | grep -q ok
+}
+
+info "Grafana health via proxy (${GRAFANA_URL})..."
+GRAFANA_OK=0
 for i in 1 2 3 4 5 6; do
-  if grafana_healthy; then
-    ok "Grafana healthy at http://${MONITOR_IP}:${GRAFANA_PORT}"
+  IN_OK=0; HOST_OK=0
+  grafana_healthy_in_lxc && IN_OK=1
+  if [[ $HAS_PCT -eq 1 && $IN_LXC -eq 0 ]]; then grafana_healthy_from_host && HOST_OK=1; fi
+  if [[ $IN_OK -eq 1 ]] && [[ $HAS_PCT -eq 0 || $HOST_OK -eq 1 ]]; then
+    EXTRA=""
+    [[ $HAS_PCT -eq 1 && $IN_LXC -eq 0 ]] && EXTRA=" + LAN side"
+    ok "Grafana healthy at ${GRAFANA_URL} (inside LXC${EXTRA})"
+    GRAFANA_OK=1
     break
   fi
   sleep 3
   if [[ $i -eq 6 ]]; then
     warn "Grafana health check failed after 18s"
-    lxc_exec "docker logs grafana 2>&1 | tail -30 || true"
-    lxc_exec "curl -v http://${MONITOR_IP}:${GRAFANA_PORT}/api/health 2>&1 | head -20 || curl -v http://localhost:${GRAFANA_PORT}/api/health 2>&1 | head -20 || true"
+    lxc_exec "docker logs grafana 2>&1 | tail -20 || true"
+    lxc_exec "docker logs grafana-proxy 2>&1 | tail -20 || true"
+    lxc_exec "docker exec grafana wget -qO- http://localhost:3000/api/health 2>/dev/null | head -3 || echo 'grafana itself not responding on :3000'"
   fi
 done
+if [[ $GRAFANA_OK -ne 1 ]]; then
+  fail "Grafana not reachable at ${GRAFANA_URL}" >&2
+  exit 1
+fi
 
-lxc_exec "docker exec grafana wget -qO- http://prometheus:9090/-/healthy 2>/dev/null | head -5 && echo 'grafana->prometheus ok' || echo 'grafana->prometheus pending'"
+info "Grafana → Prometheus datasource..."
+if lxc_exec "docker exec grafana wget -qO- http://prometheus:9090/-/healthy 2>/dev/null | grep -qi healthy"; then
+  ok "grafana -> prometheus ok"
+else
+  fail "grafana cannot reach prometheus:9090 — dashboards will not query" >&2
+  exit 1
+fi
 
 info "Data volumes:"
 lxc_exec "ls -lh '${DATA_DIR}/prometheus_data' 2>&1 | head -5; ls -lh '${DATA_DIR}/grafana_data' 2>&1 | head -5; df -h '${DATA_DIR}' 2>&1 | tail -5"
@@ -471,15 +465,15 @@ lxc_exec "ls -lh '${DATA_DIR}/prometheus_data' 2>&1 | head -5; ls -lh '${DATA_DI
 section "Deploy summary"
 printf "  %-22s %s\n" "Host LXC:" "${LXC_VMID} hlh-docker ${LXC_IP}"
 printf "  %-22s %s\n" "Context:" "$([[ $IN_LXC -eq 1 ]] && echo "inside hlh-docker (direct)" || echo "prox01 via pct")"
-printf "  %-22s %s\n" "Service IP (macvlan):" "${MONITOR_IP} (${EFFECTIVE_MACVLAN} parent ${MACVLAN_PARENT})"
-printf "  %-22s %s\n" "Grafana:" "http://${MONITOR_IP}:${GRAFANA_PORT} (admin via .env or admin/admin)"
-printf "  %-22s %s\n" "Prometheus:" "http://prometheus:9090 internal"
-printf "  %-22s %s\n" "Data (ZFS vault):" "${DATA_DIR}"
-printf "  %-22s %s\n" "Scrape:" "vllm 192.168.1.13:8000, llamacpp 192.168.1.12:80 + 192.168.1.11:80 epu (15s)"
+printf "  %-22s %s\n" "Grafana:" "${GRAFANA_URL} (nginx proxy — LAN + VPN + inside LXC)"
+printf "  %-22s %s\n" "Prometheus:" "http://${LXC_IP}:9090 (UI) / http://prometheus:9090 (datasource)"
+printf "  %-22s %s\n" "Scrape:" "llamacpp 192.168.1.12:80 + 192.168.1.11:80 (epu), 15s"
 printf "  %-22s %s\n" "Retention:" "${PROM_RETENTION}"
+printf "  %-22s %s\n" "Data (ZFS vault):" "${DATA_DIR}"
 echo ""
-ok "Deploy complete — Grafana at http://${MONITOR_IP}:${GRAFANA_PORT}"
-info "Next: open Grafana, datasource http://prometheus:9090 already provisioned, import dashboards"
+ok "Deploy complete — Grafana at ${GRAFANA_URL}"
+info "Credentials: .env or default admin/admin — change the password in the Grafana UI (UI persists it in grafana_data)"
+info "Next: open ${GRAFANA_URL}, datasource http://prometheus:9090 already provisioned, dashboards auto-provisioned"
 if [[ $IN_LXC -eq 1 ]]; then
   info "Logs: docker logs -f grafana / prometheus"
   info "Down: cd ${DATA_DIR} && docker compose down"
