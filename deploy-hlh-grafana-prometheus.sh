@@ -24,7 +24,11 @@
 # Usage:
 #   ./deploy-hlh-grafana-prometheus.sh --plan    # dry-run
 #   ./deploy-hlh-grafana-prometheus.sh --apply   # deploy
-#   ./deploy-hlh-grafana-prometheus.sh --nuke    # down -v + rm data + redeploy
+#   ./deploy-hlh-grafana-prometheus.sh --nuke    # down + redeploy (data PRESERVED —
+#                                                 #   DATA_DIR is durable vault storage,
+#                                                 #   greenfield containers reuse it)
+#   ./deploy-hlh-grafana-prometheus.sh --nuke --wipe-data
+#                                                 #   ALSO destroy data (old behavior)
 #
 # Env overrides: MONITOR_IP=192.168.1.14, MACVLAN_NAME, PROM_RETENTION=15d
 # ============================================================================
@@ -48,6 +52,7 @@ PROM_RETENTION="${PROM_RETENTION:-15d}"
 
 MODE="plan"
 NUKE=0
+WIPE_DATA=0
 
 # --- colour helpers ---
 COLOUR_RESET=""; COLOUR_GREEN=""; COLOUR_RED=""; COLOUR_YELLOW=""; COLOUR_BOLD=""
@@ -70,7 +75,8 @@ Run inside hlh-docker (recommended) or on prox01 via pct:
 
   --plan          Dry-run (default) — validates compose, shows what would be done
   --apply         Deploy stack (creates/reuses macvlan, copies configs, up -d)
-  --nuke          Down stack, remove volumes + data, then redeploy
+  --nuke          Down stack, then redeploy — DATA PRESERVED (lives on durable vault)
+  --wipe-data     With --nuke: also destroy the data dirs (pre-2026-10-08 behavior)
   -h, --help      Show this help
 
 Examples:
@@ -96,11 +102,17 @@ while [[ $# -gt 0 ]]; do
     --plan) MODE="plan" ;;
     --apply) MODE="apply" ;;
     --nuke) MODE="apply"; NUKE=1 ;;
+    --wipe-data) WIPE_DATA=1 ;;
     -h|--help) usage; exit 0 ;;
     *) fail "Unknown option: $1"; usage; exit 1 ;;
   esac
   shift
 done
+
+if [[ "$WIPE_DATA" -eq 1 && "$NUKE" -eq 0 ]]; then
+  fail "--wipe-data only applies with --nuke" >&2
+  exit 1
+fi
 
 # --- detect execution context ---
 HAS_PCT=0; IN_LXC=0
@@ -258,11 +270,21 @@ else
 fi
 
 # --- nuke mode ---
+# 2026-10-08: nuke no longer deletes data. DATA_DIR lives on durable vault
+# storage (RaidZ1-6TB/vault) — the whole point of the 2026-10-07 migration
+# was that data survives teardowns and CT rebuilds. Nuke = fresh containers,
+# same data. The old rm -rf silently destroyed durable data (and 14h of
+# history). Explicit --wipe-data restores that behavior when it's actually wanted.
 if [[ "$NUKE" -eq 1 ]]; then
-  section "Nuke: tearing down existing stack"
-  lxc_exec "cd '${DATA_DIR}' 2>/dev/null && docker compose down -v --remove-orphans 2>/dev/null || docker rm -f prometheus grafana 2>/dev/null || true"
-  lxc_exec "rm -rf '${DATA_DIR}/prometheus_data' '${DATA_DIR}/grafana_data' 2>/dev/null || true"
-  ok "nuke complete — data removed, will redeploy fresh"
+  section "Nuke: tearing down existing stack (data PRESERVED at ${DATA_DIR})"
+  lxc_exec "cd '${DATA_DIR}' 2>/dev/null && docker compose down --remove-orphans 2>/dev/null || docker rm -f prometheus grafana 2>/dev/null || true"
+  if [[ "$WIPE_DATA" -eq 1 ]]; then
+    warn "--wipe-data: destroying durable data at ${DATA_DIR}" >&2
+    lxc_exec "rm -rf '${DATA_DIR}/prometheus_data' '${DATA_DIR}/grafana_data' 2>/dev/null || true"
+    ok "data destroyed (--wipe-data) — redeploy starts fresh"
+  else
+    ok "containers torn down — data preserved on durable vault; redeploy reuses it"
+  fi
 fi
 
 # --- ensure data dirs ---
