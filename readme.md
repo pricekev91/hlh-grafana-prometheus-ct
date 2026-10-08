@@ -44,19 +44,27 @@ Both engines expose native Prometheus metrics. Prometheus scrapes them on a shor
    docker compose up -d
    ```
 
-4. Open Grafana at `http://192.168.1.9:3000` — the nginx `grafana-proxy` sidecar is the
-   canonical URL (works from LAN, VPN, and inside the LXC). Default credentials
-   `admin` / `admin`; set `GF_SECURITY_ADMIN_PASSWORD` in `.env` for a fresh deploy.
+4. Open Grafana:
+   - `http://192.168.1.14` (a.k.a. `http://grafana.mizertech.net`) — macvlan
+     dedicated IP, the canonical URL on the LAN (port 80, no suffix).
+   - `http://192.168.1.9:3000` — nginx `grafana-proxy` sidecar; use this from
+     the VPN or inside the LXC, where the `.14` macvlan is unreachable
+     (macvlan-on-veth can't hairpin ARP; the VPN endpoint drops `.14`).
+   Default credentials `admin` / `admin`; set `GF_SECURITY_ADMIN_PASSWORD` in
+   `.env` for a fresh deploy.
 5. Dashboards are auto-provisioned from `grafana/dashboards/` (llama.cpp + unified;
    the vLLM dashboards were removed 2026-10-08 when the vLLM engine was retired).
 
 Prometheus UI will be available at `http://192.168.1.9:9090` (internal:
 `http://prometheus:9090`, the provisioned Grafana datasource).
 
-> Note (2026-10-08): the original design put Grafana on a dedicated macvlan IP
-> (192.168.1.14). On top of the LXC's veth that IP is unreachable from inside
-> the LXC (macvlan-on-veth can't hairpin ARP) and from the VPN endpoint, so it
-> was removed — the bridge-side proxy is now the only external path.
+> Note (2026-10-08): the dedicated macvlan IP (192.168.1.14) is the canonical
+> LAN URL (grafana.mizertech.net) but is unreachable from inside the LXC
+> (macvlan-on-veth can't hairpin ARP) and from the VPN endpoint (192.168.2.1
+> drops it while .9 works) — hence the bridge-side proxy on .9:3000 as the
+> VPN/inside-LXC path. The deploy script verifies both paths (macvlan from the
+> LAN side in pct mode, proxy from both sides) and fails if any scrape target
+> is down.
 
 ## Configuration Notes
 

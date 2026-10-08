@@ -1,12 +1,16 @@
 # Stage 1 — hlh-grafana-prometheus-ct
 # Target: hlh-docker LXC 109 (192.168.1.9)
-# Grafana  http://192.168.1.9:3000 (grafana-proxy nginx sidecar — CANONICAL URL)
-#   Works from LAN, VPN, and inside the LXC.
-#   2026-10-08: removed the 192.168.1.14 macvlan. On top of the LXC veth it was
-#   unreachable from inside the LXC (macvlan-on-veth can't hairpin ARP) and from
-#   the VPN endpoint, so the "dedicated IP" only worked from some LAN clients
-#   while tooling + VPN saw a dead page. Grafana now stays on the internal
-#   bridge (port 3000); the proxy is the sole external path.
+#
+# Two external URLs, both required:
+#   Grafana  http://192.168.1.14:80  (macvlan dedicated IP — CANONICAL, LAN;
+#            this is what grafana.mizertech.net resolves to)
+#          http://192.168.1.9:3000   (grafana-proxy nginx sidecar — works from
+#            VPN and inside the LXC, where .14 is unreachable:
+#            macvlan-on-veth can't hairpin ARP, and the VPN endpoint
+#            192.168.2.1 drops packets to .14 while .9 works)
+#   NOTE: `ports:` on the grafana service itself are IGNORED because the
+#   macvlan driver does not support port mappings — external access on .14 is
+#   direct L2 (port 80), and the proxy covers the rest.
 # Prometheus http://prometheus:9090 internal (Grafana datasource)
 #          http://192.168.1.9:9090 external UI
 # Storage: /vault/grafana on host ZFS RaidZ1-6TB/vault (mp1) — vault dataset,
@@ -53,12 +57,16 @@ services:
     image: grafana/grafana:11.5.2
     container_name: grafana
     restart: unless-stopped
-    # Internal only — external access goes through grafana-proxy (nginx) on
-    # http://192.168.1.9:3000. No macvlan (see header note).
+    # Dedicated macvlan IP 192.168.1.14, served on port 80 (no port suffix).
+    # Container process runs as uid 472 (grafana) — NET_BIND_SERVICE needed
+    # for port 80.
+    cap_add:
+      - NET_BIND_SERVICE
     environment:
       - GF_SECURITY_ADMIN_USER=${GF_SECURITY_ADMIN_USER:-admin}
       - GF_SECURITY_ADMIN_PASSWORD=${GF_SECURITY_ADMIN_PASSWORD:-admin}
       - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SERVER_HTTP_PORT=${GRAFANA_PORT:-80}
     volumes:
       - grafana_data:/var/lib/grafana
       - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
@@ -67,13 +75,16 @@ services:
     depends_on:
       - prometheus
     networks:
-      - internal
+      internal:
+      macvlan:
+        ipv4_address: 192.168.1.14
 
   grafana-proxy:
     image: nginx:alpine
     container_name: grafana-proxy
     restart: unless-stopped
-    # Canonical external URL: http://192.168.1.9:3000 (LAN + VPN + inside LXC)
+    # VPN + inside-LXC path (macvlan can't do host-published ports):
+    # http://192.168.1.9:3000
     ports:
       - "192.168.1.9:3000:80"
     volumes:
@@ -100,3 +111,6 @@ volumes:
 networks:
   internal:
     driver: bridge
+  macvlan:
+    external: true
+    name: ${MACVLAN_NAME:-macvlan}
